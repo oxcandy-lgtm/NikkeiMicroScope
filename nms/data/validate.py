@@ -9,6 +9,12 @@ The validator is intentionally strict at MVP:
 * The schema must not imply live execution, broker integration, or
   account state. The validator enforces this by checking that the
   set of top-level field names is exactly the documented set.
+* **Nested strictness:** the same whitelist rule applies to every
+  nested object (e.g. ``us_equities``, ``fx``, ``volatility_context``)
+  and to every item in ``economic_event_risk.events``. Any unexpected
+  key at any level is rejected. This is a defense-in-depth check that
+  prevents the schema from silently growing to include account /
+  broker / order / credential fields at any depth.
 
 The validator is pure: no I/O, no environment reads, no network.
 """
@@ -101,7 +107,64 @@ def _require_sub_mapping(
     return v
 
 
+def _reject_extra_keys(
+    mapping: Mapping[str, Any], allowed_keys, path: str
+) -> None:
+    """Reject any key in ``mapping`` that is not in ``allowed_keys``.
+
+    ``path`` is a human-readable location used in the error message
+    (e.g. ``"us_equities"`` or ``"economic_event_risk.events[0]"``).
+    This is a defense-in-depth check applied at every nesting level
+    so that account / broker / order / credential fields cannot be
+    silently added to the schema at any depth.
+    """
+    extra = set(mapping.keys()) - set(allowed_keys)
+    if extra:
+        raise ValidationError(
+            f"unexpected fields in {path}: "
+            + ", ".join(sorted(repr(k) for k in extra))
+        )
+
+
+#: Allowed keys for the ``us_equities`` nested object.
+_ALLOWED_US_EQUITIES_KEYS = ("sp500", "dow", "nasdaq100", "russell2000")
+#: Allowed keys for the ``semiconductor`` nested object.
+_ALLOWED_SEMICONDUCTOR_KEYS = ("sox",)
+#: Allowed keys for the ``fx`` nested object.
+_ALLOWED_FX_KEYS = ("usdjpy",)
+#: Allowed keys for the ``us_yields`` nested object.
+_ALLOWED_US_YIELDS_KEYS = ("us2y", "us10y", "us10y_minus_us2y")
+#: Allowed keys for the ``nikkei_night_session`` nested object.
+_ALLOWED_NIKKEI_NIGHT_KEYS = (
+    "close",
+    "high",
+    "low",
+    "range",
+    "percent_change",
+)
+#: Allowed keys for the ``previous_day`` nested object.
+_ALLOWED_PREVIOUS_DAY_KEYS = ("high", "low", "close", "range")
+#: Allowed keys for the ``economic_event_risk`` nested object.
+_ALLOWED_ECONOMIC_EVENT_RISK_KEYS = ("events",)
+#: Allowed keys for the ``intraday_range`` nested object.
+_ALLOWED_INTRADAY_RANGE_KEYS = (
+    "first_15m_high",
+    "first_15m_low",
+    "first_15m_range",
+    "atr_like_baseline",
+)
+#: Allowed keys for the ``volatility_context`` nested object.
+_ALLOWED_VOLATILITY_CONTEXT_KEYS = (
+    "realized_vol",
+    "atr_like",
+    "compression_flag",
+)
+#: Allowed keys for an ``EventItem`` mapping.
+_ALLOWED_EVENT_ITEM_KEYS = ("name", "time_jst", "impact")
+
+
 def _build_us_equities(d: Mapping[str, Any]) -> UsEquities:
+    _reject_extra_keys(d, _ALLOWED_US_EQUITIES_KEYS, "us_equities")
     return UsEquities(
         sp500=_require_number(d, "sp500"),
         dow=_require_number(d, "dow"),
@@ -111,14 +174,17 @@ def _build_us_equities(d: Mapping[str, Any]) -> UsEquities:
 
 
 def _build_semiconductor(d: Mapping[str, Any]) -> Semiconductor:
+    _reject_extra_keys(d, _ALLOWED_SEMICONDUCTOR_KEYS, "semiconductor")
     return Semiconductor(sox=_require_number(d, "sox"))
 
 
 def _build_fx(d: Mapping[str, Any]) -> Fx:
+    _reject_extra_keys(d, _ALLOWED_FX_KEYS, "fx")
     return Fx(usdjpy=_require_number(d, "usdjpy"))
 
 
 def _build_us_yields(d: Mapping[str, Any]) -> UsYields:
+    _reject_extra_keys(d, _ALLOWED_US_YIELDS_KEYS, "us_yields")
     return UsYields(
         us2y=_require_number(d, "us2y"),
         us10y=_require_number(d, "us10y"),
@@ -127,6 +193,9 @@ def _build_us_yields(d: Mapping[str, Any]) -> UsYields:
 
 
 def _build_nikkei_night(d: Mapping[str, Any]) -> NikkeiNightSession:
+    _reject_extra_keys(
+        d, _ALLOWED_NIKKEI_NIGHT_KEYS, "nikkei_night_session"
+    )
     return NikkeiNightSession(
         close=_require_number(d, "close"),
         high=_require_number(d, "high"),
@@ -137,6 +206,7 @@ def _build_nikkei_night(d: Mapping[str, Any]) -> NikkeiNightSession:
 
 
 def _build_previous_day(d: Mapping[str, Any]) -> PreviousDay:
+    _reject_extra_keys(d, _ALLOWED_PREVIOUS_DAY_KEYS, "previous_day")
     return PreviousDay(
         high=_require_number(d, "high"),
         low=_require_number(d, "low"),
@@ -146,6 +216,9 @@ def _build_previous_day(d: Mapping[str, Any]) -> PreviousDay:
 
 
 def _build_economic_event_risk(d: Mapping[str, Any]) -> EconomicEventRisk:
+    _reject_extra_keys(
+        d, _ALLOWED_ECONOMIC_EVENT_RISK_KEYS, "economic_event_risk"
+    )
     raw_events = _require(d, "events")
     if not isinstance(raw_events, list):
         raise ValidationError(
@@ -157,6 +230,9 @@ def _build_economic_event_risk(d: Mapping[str, Any]) -> EconomicEventRisk:
             raise ValidationError(
                 f"events[{i}] must be a mapping, got {type(ev).__name__}"
             )
+        _reject_extra_keys(
+            ev, _ALLOWED_EVENT_ITEM_KEYS, f"economic_event_risk.events[{i}]"
+        )
         name = _require_str(ev, "name")
         time_jst = ev.get("time_jst", "")
         impact = ev.get("impact", "")
@@ -173,6 +249,7 @@ def _build_economic_event_risk(d: Mapping[str, Any]) -> EconomicEventRisk:
 
 
 def _build_intraday_range(d: Mapping[str, Any]) -> IntradayRange:
+    _reject_extra_keys(d, _ALLOWED_INTRADAY_RANGE_KEYS, "intraday_range")
     return IntradayRange(
         first_15m_high=_require_number(d, "first_15m_high"),
         first_15m_low=_require_number(d, "first_15m_low"),
@@ -182,6 +259,7 @@ def _build_intraday_range(d: Mapping[str, Any]) -> IntradayRange:
 
 
 def _build_volatility_context(d: Mapping[str, Any]) -> VolatilityContext:
+    _reject_extra_keys(d, _ALLOWED_VOLATILITY_CONTEXT_KEYS, "volatility_context")
     flag = _require(d, "compression_flag")
     if not isinstance(flag, bool):
         raise ValidationError(

@@ -13,7 +13,13 @@ This contract defines:
 
 The corresponding schema is enforced at runtime by
 `nms.data.validate.validate_market_context`. Any payload that does not
-match the schema is rejected with `nms.data.ValidationError`.
+match the schema is rejected with `nms.data.ValidationError`. The
+enforcement is **strict at every level**: unexpected keys are rejected
+at the top level, at every nested object (`us_equities`, `fx`,
+`volatility_context`, etc.), and at every item in
+`economic_event_risk.events`. This is a defense-in-depth posture
+that prevents the schema from silently growing to include account,
+broker, order, or credential fields at any depth.
 
 ## 1. Schema (Canonical)
 
@@ -40,10 +46,36 @@ Numeric fields accept `int` or `float`. `bool` is **rejected** for
 numeric fields (it is technically `int` in Python but is almost always
 a schema bug).
 
+**Nested strictness:** every nested object and every event item has
+its own fixed key set, and the validator rejects any key outside that
+set with `nms.data.ValidationError`. The allowed key sets are:
+
+| Path | Allowed keys |
+| --- | --- |
+| `us_equities` | `sp500`, `dow`, `nasdaq100`, `russell2000` |
+| `semiconductor` | `sox` |
+| `fx` | `usdjpy` |
+| `us_yields` | `us2y`, `us10y`, `us10y_minus_us2y` |
+| `nikkei_night_session` | `close`, `high`, `low`, `range`, `percent_change` |
+| `previous_day` | `high`, `low`, `close`, `range` |
+| `economic_event_risk` | `events` |
+| `economic_event_risk.events[i]` | `name`, `time_jst`, `impact` |
+| `intraday_range` | `first_15m_high`, `first_15m_low`, `first_15m_range`, `atr_like_baseline` |
+| `volatility_context` | `realized_vol`, `atr_like`, `compression_flag` |
+
 The set of allowed top-level keys is defined as
-`_ALLOWED_TOP_KEYS` in `nms/data/validate.py`. Adding a new top-level
-key requires updating both this document and the validator in the
-same PR.
+`_ALLOWED_TOP_KEYS` in `nms/data/validate.py`. The allowed key sets
+for every nested object and for `EventItem` are defined as
+`_ALLOWED_*_KEYS` constants in the same file. All are enforced by
+`_reject_extra_keys`, which is called at the start of every
+`_build_*` helper and at the start of each iteration of the events
+loop.
+
+Adding a new field at **any** level (top-level, nested, or inside an
+event item) requires updating this document and the validator in
+the same PR. The whitelist rules in `nms/data/validate.py` and the
+table in this section are normative; if they disagree, the validator
+wins and this document is the bug.
 
 ## 2. Adapter Interface
 

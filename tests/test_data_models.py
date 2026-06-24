@@ -185,6 +185,39 @@ class SchemaNegativeTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             validate_market_context(payload)
 
+    def test_extra_nested_us_equities_field_rejected(self) -> None:
+        # Defense in depth: account / broker / order fields must not
+        # be silently added at any nesting level. ``us_equities`` only
+        # allows the four documented indices.
+        payload = _minimal_valid_payload()
+        payload["us_equities"]["secret_account_id"] = "ACC-12345"
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
+    def test_extra_nested_fx_field_rejected(self) -> None:
+        # ``fx`` only allows ``usdjpy``. Any extra key (e.g. a hidden
+        # ``api_key`` or ``broker_token``) is rejected.
+        payload = _minimal_valid_payload()
+        payload["fx"]["api_key"] = "sk-live-pretend"
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
+    def test_extra_event_item_field_rejected(self) -> None:
+        # ``economic_event_risk.events[i]`` only allows
+        # ``name``, ``time_jst``, ``impact``. Any extra key (e.g. a
+        # ``broker_order_ref`` or an ``account_id``) is rejected.
+        payload = _minimal_valid_payload()
+        payload["economic_event_risk"]["events"] = [
+            {
+                "name": "FOMC",
+                "time_jst": "2026-06-24T21:00:00+09:00",
+                "impact": "high",
+                "broker_order_ref": "ORD-9999",
+            }
+        ]
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
     def test_timezone_must_be_mvp_canonical(self) -> None:
         payload = _minimal_valid_payload()
         payload["timezone"] = "UTC"
