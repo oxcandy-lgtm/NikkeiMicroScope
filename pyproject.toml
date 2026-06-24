@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nms"
+version = "0.1.0"
+description = "NikkeiMicroScope - market regime observation and no-trade decision support for Nikkei 225 micro futures research."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Proprietary" }
+authors = [
+    { name = "NikkeiMicroScope Maintainers" }
+]
+# No runtime dependencies on purpose. See docs/data-adapter-contract.md
+# and AGENTS.md for the "observation-only, stdlib-first" posture.
+dependencies = []
+
+[project.optional-dependencies]
+# Keep dev extras minimal and local-only. The MVP test suite uses
+# stdlib unittest; pytest is provided as an optional convenience
+# for local development and is NOT required for CI.
+dev = [
+    "pytest>=7",
+]
+
+[project.urls]
+# Intentionally no Homepage / Issues links. This repository does not
+# use GitHub Issues. See GITHUB_ISSUES_BAN.md.
+Repository = "https://github.com/oxcandy-lgtm/NikkeiMicroScope"
+
+[tool.setuptools.packages.find]
+include = ["nms*"]
+exclude = ["tests*", "fixtures*", "docs*", "scripts*", "exports*"]
+
+[tool.setuptools.package-data]
+nms = ["py.typed"]
+
+# --- Local lint / format hints (optional, not enforced in CI MVP) -------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

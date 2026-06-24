@@ -48,8 +48,9 @@ This repository does **not** contain:
 
 ## Initial Roadmap
 
-1. **Docs-only bootstrap** — this PR.
+1. **Docs-only bootstrap** — PR #1.
 2. **Data adapters** — read-only ingestion of public context signals.
+   See `docs/data-adapter-contract.md` for the schema and adapter rules.
 3. **Scoring** — implement `direction_score`, `volatility_score`,
    `event_risk_score`, `no_trade_score` from `docs/market-regime-score.md`.
 4. **Backtest** — walk-forward validation against historical sessions.
@@ -57,6 +58,14 @@ This repository does **not** contain:
 
 Future work items must be opened as pull requests, not issues, and must not
 modify the hard non-goals above.
+
+## Data Adapter Contract
+
+The normalized `MarketContext` schema and the rules for adding new
+adapters are defined in [`docs/data-adapter-contract.md`](docs/data-adapter-contract.md).
+The MVP ships only the `FixtureMarketContextAdapter`; any future
+adapter (network, database, mock) is governed by the contract and
+must be reviewed as a separate PR.
 
 ## CCL Tier 2 (Satellite-first) Note
 
@@ -89,13 +98,27 @@ and no recurring sync pressure beyond explicit workflow / manual runs.
 |   |-- architecture.md
 |   |-- research-plan.md
 |   |-- market-regime-score.md
-|   `-- risk-policy.md
+|   |-- risk-policy.md
+|   `-- data-adapter-contract.md
+|-- nms/                              # Python package (read-only data layer)
+|   `-- data/
+|       |-- __init__.py
+|       |-- models.py
+|       |-- adapters.py
+|       |-- fixture_loader.py
+|       `-- validate.py
+|-- tests/                            # stdlib unittest suite
+|-- fixtures/                         # Local sample fixtures (no network)
+|   `-- market_context/
 |-- exports/
 |   |-- satellite-health.json
 |   `-- satellite-update-plan.json
 |-- scripts/
-|   `-- satellite-update-dry-run.sh
-`-- .github/workflows/                # Optional, read-only CI only
+|   |-- satellite-update-dry-run.sh
+|   `-- validate-fixtures.sh
+|-- pyproject.toml
+|-- Makefile
+`-- .github/workflows/                # Read-only CI only
 ```
 
 ## Disclaimer

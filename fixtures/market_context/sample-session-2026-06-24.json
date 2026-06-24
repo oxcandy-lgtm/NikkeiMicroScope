@@ -1,0 +1,59 @@
+{
+  "session_date": "2026-06-24",
+  "timezone": "Asia/Tokyo",
+  "us_equities": {
+    "sp500": 5542.31,
+    "dow": 41280.7,
+    "nasdaq100": 19845.42,
+    "russell2000": 2103.55
+  },
+  "semiconductor": {
+    "sox": 5231.18
+  },
+  "fx": {
+    "usdjpy": 149.82
+  },
+  "us_yields": {
+    "us2y": 4.27,
+    "us10y": 4.41,
+    "us10y_minus_us2y": 0.14
+  },
+  "nikkei_night_session": {
+    "close": 40125.5,
+    "high": 40180.0,
+    "low": 40020.0,
+    "range": 160.0,
+    "percent_change": 0.18
+  },
+  "previous_day": {
+    "high": 40210.0,
+    "low": 39940.0,
+    "close": 40050.0,
+    "range": 270.0
+  },
+  "economic_event_risk": {
+    "events": [
+      {
+        "name": "BoJ Monetary Policy Statement",
+        "time_jst": "2026-06-24T12:00:00+09:00",
+        "impact": "high"
+      },
+      {
+        "name": "US Durable Goods Orders (m/m)",
+        "time_jst": "2026-06-24T21:30:00+09:00",
+        "impact": "medium"
+      }
+    ]
+  },
+  "intraday_range": {
+    "first_15m_high": 40140.0,
+    "first_15m_low": 40080.0,
+    "first_15m_range": 60.0,
+    "atr_like_baseline": 285.0
+  },
+  "volatility_context": {
+    "realized_vol": 0.114,
+    "atr_like": 290.0,
+    "compression_flag": false
+  }
+}
