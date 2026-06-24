@@ -99,6 +99,32 @@ Where `alignment_penalty` rises when the planned side disagrees with
 The `no_trade_threshold` is a documented constant (suggested MVP
 value: `0.5`).
 
+## Implementation Note (PR #4 skeleton)
+
+The MVP implementation in `nms/core/` follows the formulas above
+with two clarifications:
+
+1. **`direction_score` is currently driven by the overnight Nikkei
+   move only.** The `MarketContext` schema (see
+   `docs/data-adapter-contract.md`) exposes daily percent change
+   only for `nikkei_night_session.percent_change`. The other five
+   context groups (Nasdaq-100, SOX, S&P 500, USDJPY, US 10Y) carry
+   absolute values, not daily changes. The implementation
+   therefore contributes a neutral `0.0` from those five slots at
+   MVP rather than inventing changes from absolute levels.
+   Activating them requires a schema PR that adds change fields,
+   not a scoring PR.
+
+2. **The bounded normalizer for `percent_change` saturates at
+   ±2%.** A 2% move fully drives the signal; larger moves are
+   clamped. This is a documented constant
+   (`PERCENT_CHANGE_SATURATION = 2.0`) in `nms/core/constants.py`.
+
+The exact formulas, constants, MVP limitations, and non-claims are
+normatively defined in `docs/core-scoring-contract.md`. If this
+section and the contract disagree, the contract wins and this
+section is the bug.
+
 ## Logging No-Trade Reasons and False Positives
 
 Each session must record, in `regime.json`:
