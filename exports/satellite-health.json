@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-06-24T13:05:38Z",
-  "generated_at_jst": "2026-06-24T22:05:38+0900",
+  "generated_at_utc": "2026-06-24T13:21:58Z",
+  "generated_at_jst": "2026-06-24T22:21:58+0900",
   "project": "NikkeiMicroScope",
   "short_name": "NMS",
   "ccl_tier": 2,
@@ -9,8 +9,8 @@
   "repo_mode": "dry_run",
   "source_of_truth": false,
   "advisory_only": true,
-  "branch": "codex/bootstrap-ccl-tier2-satellite",
-  "head_sha": "3605c03e6bdab210707839a8399dfcc2d6878af5",
+  "branch": "codex/regen-satellite-exports",
+  "head_sha": "d9a093d732ef5b63ba94354e08a17f12a3837bff",
   "clean_tree": true,
   "checks": {
     "satellite_pack_present": true,
