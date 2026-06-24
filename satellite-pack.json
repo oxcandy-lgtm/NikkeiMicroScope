@@ -1,0 +1,55 @@
+{
+  "pack_id": "nikkei-microscope-satellite",
+  "pack_version": "0.1.0",
+  "project": {
+    "name": "NikkeiMicroScope",
+    "short_name": "NMS",
+    "description": "Market regime observation and no-trade decision support for Nikkei 225 micro futures research."
+  },
+  "ccl": {
+    "tier": 2,
+    "mode": "satellite-first",
+    "parent_pack_id": null,
+    "is_full_ccl_instance": false,
+    "copies_parent_tree": false
+  },
+  "repo_mode": "dry_run",
+  "source_of_truth": false,
+  "managed_paths": [
+    "satellite-pack.json",
+    ".agent/state.json",
+    "scripts/satellite-update-dry-run.sh",
+    "exports/satellite-health.json",
+    "exports/satellite-update-plan.json"
+  ],
+  "local_override_paths": [
+    "README.md",
+    "AGENTS.md",
+    "docs/",
+    ".github/",
+    ".gitignore",
+    ".editorconfig"
+  ],
+  "forbidden_surfaces": [
+    "github_issues",
+    "personal_access_tokens",
+    "secrets",
+    "broker_credentials",
+    "live_order_placement",
+    "auto_execution"
+  ],
+  "update_policy": {
+    "auto_apply": false,
+    "advisory_only": true,
+    "schedule": "manual_or_explicit_workflow",
+    "dry_run_required": true,
+    "entry_point": "scripts/satellite-update-dry-run.sh"
+  },
+  "bootstrap": {
+    "stage": "bootstrap",
+    "pr_title": "Bootstrap CCL Tier 2 Satellite project",
+    "pr_mode": "draft",
+    "branch": "codex/bootstrap-ccl-tier2-satellite",
+    "base_branch": "main"
+  }
+}
