@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "project": "NikkeiMicroScope",
+  "short_name": "NMS",
+  "ccl_tier": 2,
+  "ccl_mode": "satellite-first",
+  "repo_mode": "dry_run",
+  "stage": "bootstrap",
+  "live_trading": false,
+  "broker_integration": false,
+  "auto_execution": false,
+  "source_of_truth": false,
+  "uses_github_issues": false,
+  "uses_pat": false,
+  "has_secrets": false,
+  "branch": {
+    "current": "codex/bootstrap-ccl-tier2-satellite",
+    "base": "main",
+    "direct_push_to_base": false
+  },
+  "managed_paths": [
+    "satellite-pack.json",
+    ".agent/state.json",
+    "scripts/satellite-update-dry-run.sh",
+    "exports/satellite-health.json",
+    "exports/satellite-update-plan.json"
+  ],
+  "local_override_paths": [
+    "README.md",
+    "AGENTS.md",
+    "docs/",
+    ".github/",
+    ".gitignore",
+    ".editorconfig"
+  ],
+  "advisory_outputs": [
+    "exports/satellite-health.json",
+    "exports/satellite-update-plan.json"
+  ],
+  "bootstrap_metadata": {
+    "bootstrap_pr_title": "Bootstrap CCL Tier 2 Satellite project",
+    "bootstrap_pr_mode": "draft",
+    "bootstrap_branch": "codex/bootstrap-ccl-tier2-satellite",
+    "bootstrap_base_branch": "main"
+  },
+  "notes": [
+    "Honest minimal state for a docs-only bootstrap.",
+    "All advisory exports are non-canonical.",
+    "Live trading and broker integration are explicitly disabled.",
+    "No GitHub Issues, no PAT, no secrets."
+  ]
+}

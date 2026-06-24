@@ -1,0 +1,89 @@
+name: ccl-lite
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "codex/**"
+
+# Read-only by default. See GITHUB_ACTIONS_SAFETY.md.
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate bootstrap artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Explicitly do not pass a token. The default GITHUB_TOKEN
+          # is read-only by virtue of the permissions block above.
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate satellite-pack.json
+        run: python3 -m json.tool satellite-pack.json > /dev/null
+
+      - name: Validate .agent/state.json
+        run: python3 -m json.tool .agent/state.json > /dev/null
+
+      - name: Validate exports/satellite-health.json
+        run: python3 -m json.tool exports/satellite-health.json > /dev/null
+
+      - name: Validate exports/satellite-update-plan.json
+        run: python3 -m json.tool exports/satellite-update-plan.json > /dev/null
+
+      - name: Sanity check for forbidden surfaces
+        # Read-only checks only. The policy docs intentionally mention
+        # forbidden surface names in prose; the YAML-level patterns
+        # are checked only inside .github/workflows/*.yml, excluding
+        # this workflow file itself (which lists the patterns as
+        # strings by design).
+        run: |
+          set -euo pipefail
+          FAIL=0
+
+          # Build the list of workflow files to scan, excluding this
+          # file. We never want to scan the patterns array in this
+          # file for itself.
+          SCAN_FILES=$(find .github/workflows -type f -name '*.yml' -not -name 'ccl-lite.yml' 2>/dev/null || true)
+          echo "Workflow files scanned (excluding ccl-lite.yml): ${SCAN_FILES:-<none>}"
+
+          echo "--- YAML-level forbidden patterns in other workflow files ---"
+          YAML_PATTERNS=(
+            "pull_request_target"
+            "issues:[[:space:]]*write"
+            "contents:[[:space:]]*write"
+          )
+          for p in "${YAML_PATTERNS[@]}"; do
+            if [ -n "$SCAN_FILES" ] && grep -RInE "$p" $SCAN_FILES ; then
+              echo "Forbidden YAML pattern: $p" >&2
+              FAIL=1
+            fi
+          done
+
+          echo "--- Forbidden files (filesystem presence) ---"
+          for f in .env .env.local secrets credentials id_rsa id_rsa.pub id_ed25519 id_ed25519.pub; do
+            if [ -e "$f" ]; then
+              echo "Forbidden file present: $f" >&2
+              FAIL=1
+            fi
+          done
+
+          echo "--- PAT-shaped string in other workflow files ---"
+          if [ -n "$SCAN_FILES" ] && grep -RInE "GITHUB_TOKEN[[:space:]]*[:=][[:space:]]*[A-Za-z0-9_]{20,}" $SCAN_FILES ; then
+            echo "PAT-shaped GITHUB_TOKEN literal in workflow" >&2
+            FAIL=1
+          fi
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo "Forbidden surface detected." >&2
+            exit 1
+          fi
+          echo "No forbidden surface detected."
