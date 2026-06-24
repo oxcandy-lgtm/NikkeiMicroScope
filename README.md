@@ -53,6 +53,8 @@ This repository does **not** contain:
    See `docs/data-adapter-contract.md` for the schema and adapter rules.
 3. **Scoring** — implement `direction_score`, `volatility_score`,
    `event_risk_score`, `no_trade_score` from `docs/market-regime-score.md`.
+   See `docs/core-scoring-contract.md` for the exact formulas and
+   MVP normalization policy.
 4. **Backtest** — walk-forward validation against historical sessions.
 5. **Paper trading** — simulated execution only, with hard loss gates.
 
@@ -99,9 +101,15 @@ and no recurring sync pressure beyond explicit workflow / manual runs.
 |   |-- research-plan.md
 |   |-- market-regime-score.md
 |   |-- risk-policy.md
-|   `-- data-adapter-contract.md
-|-- nms/                              # Python package (read-only data layer)
-|   `-- data/
+|   |-- data-adapter-contract.md
+|   `-- core-scoring-contract.md
+|-- nms/                              # Python package (pure scoring layer)
+|   |-- core/                         # Pure scoring engine (no I/O)
+|   |   |-- __init__.py
+|   |   |-- constants.py
+|   |   |-- scoring.py
+|   |   `-- classification.py
+|   `-- data/                         # Read-only data layer
 |       |-- __init__.py
 |       |-- models.py
 |       |-- adapters.py
