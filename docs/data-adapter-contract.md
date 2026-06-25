@@ -384,3 +384,61 @@ method is annotated as returning `MarketContext`.
   value is non-positive, `FredUSDJPYAdapterError` is raised. The
   adapter does not silently treat "missing" or "non-positive" as
   a neutral contribution.
+
+## 8.4 `FredNASDAQ100OverlayAdapter` (fourth approved public no-auth network adapter)
+
+`FredNASDAQ100OverlayAdapter` is the **fourth approved public,
+no-auth network adapter** in NikkeiMicroScope. It is implemented in
+`nms/data/fred_nasdaq100.py` and is documented in full by
+[`docs/fred-nasdaq100-adapter.md`](fred-nasdaq100-adapter.md). The
+summary below is the contract view; the linked document is
+authoritative for the implementation.
+
+**What it reads:** only the FRED series below, public, no-auth, no
+API key, downloaded as CSV over plain HTTPS.
+
+| Series | Meaning | Unit | Frequency |
+| --- | --- | --- | --- |
+| NASDAQ100 | NASDAQ-100 Index | Index | Daily, Close |
+
+> **This is NASDAQ-100, not Nasdaq Composite.** The FRED series id
+> is exactly `NASDAQ100`.
+
+**What it overlays on the baseline `MarketContext`:** only the
+two `us_equities` fields:
+
+| Target field | Source |
+| --- | --- |
+| `us_equities.nasdaq100` | NASDAQ100 value at the selected date |
+| `us_equities.nasdaq100_change_pct` | `((NASDAQ100_today / NASDAQ100_yesterday) - 1) * 100` |
+
+All other `MarketContext` sections come from the base adapter and
+are left unchanged.
+
+**What it returns:** a new frozen, fully validated `MarketContext`.
+The returned context is re-validated through
+`validate_market_context` to enforce the schema and nested
+strictness. The adapter does not mutate the base context; it
+returns a new one with the two `us_equities` fields replaced. The
+`load()` method is annotated as returning `MarketContext`.
+
+**What it does NOT do:**
+
+* No API key, no auth header, no cookie.
+* No `.env`, no `os.environ.get` / `os.getenv` for credentials.
+* No broker SDK, no order placement, no live trading.
+* No subprocess, no shell-out.
+* No new runtime dependency (stdlib only).
+* No widening of the `MarketContext` schema.
+* No silent fallback for missing data. If the previous NASDAQ100
+  observation needed to compute `nasdaq100_change_pct` is missing,
+  `FredNASDAQ100AdapterError` is raised. If the previous NASDAQ100
+  value is non-positive, `FredNASDAQ100AdapterError` is raised. The
+  adapter does not silently treat "missing" or "non-positive" as a
+  neutral contribution.
+* **No raw NASDAQ100 data is committed as a fixture or exported.**
+  The FRED `NASDAQ100` series is sourced from Nasdaq, Inc. and is
+  subject to the standard FRED citation / pre-approval policy.
+  The adapter is for operator-side observation only; downstream
+  redistribution of raw NASDAQ100 observations is out of scope
+  and requires operator/legal review.
