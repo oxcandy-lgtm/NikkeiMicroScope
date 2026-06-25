@@ -34,6 +34,11 @@ from nms.data.adapters import (
     MarketContextAdapter,
 )
 from nms.data.fred_treasury import FredTreasuryOverlayAdapter
+from nms.data.fred_sp500 import (
+    FredSP500AdapterError,
+    FredSP500OverlayAdapter,
+    FredSP500SourceConfig,
+)
 from nms.data.public_sources import (
     FredObservation,
     FredTreasuryAdapterError,
@@ -48,6 +53,9 @@ __all__ = [
     "EventItem",
     "FixtureMarketContextAdapter",
     "FredObservation",
+    "FredSP500AdapterError",
+    "FredSP500OverlayAdapter",
+    "FredSP500SourceConfig",
     "FredTreasuryAdapterError",
     "FredTreasuryOverlayAdapter",
     "FredTreasurySourceConfig",

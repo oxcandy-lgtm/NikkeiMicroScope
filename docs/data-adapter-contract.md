@@ -286,3 +286,52 @@ adapter (equities, FX, SOX, Nikkei) must:
 6. Never silently fall back to a neutral value on missing data.
    A missing input is a `FredTreasuryAdapterError` (or
    equivalent), not a "neutral contribution".
+
+## 8.2 `FredSP500OverlayAdapter` (second approved public no-auth network adapter)
+
+`FredSP500OverlayAdapter` is the **second approved public, no-auth
+network adapter** in NikkeiMicroScope. It is implemented in
+`nms/data/fred_sp500.py` and is documented in full by
+[`docs/fred-sp500-adapter.md`](fred-sp500-adapter.md). The summary
+below is the contract view; the linked document is authoritative
+for the implementation.
+
+**What it reads:** only the FRED series below, public, no-auth, no
+API key, downloaded as CSV over plain HTTPS.
+
+| Series | Meaning | Unit |
+| --- | --- | --- |
+| SP500 | S&P 500 Index | index level |
+
+**What it overlays on the baseline `MarketContext`:** only the
+two `us_equities` fields:
+
+| Target field | Source |
+| --- | --- |
+| `us_equities.sp500` | SP500 value at the selected date |
+| `us_equities.sp500_change_pct` | `((SP500_today / SP500_yesterday) - 1) * 100` |
+
+All other `us_equities` fields (`dow`, `nasdaq100`, `russell2000`,
+`nasdaq100_change_pct`) and all other `MarketContext` sections
+come from the base adapter and are left unchanged.
+
+**What it returns:** a new frozen, fully validated `MarketContext`.
+The returned context is re-validated through
+`validate_market_context` to enforce the schema and nested
+strictness. The adapter does not mutate the base context; it
+returns a new one with the two `us_equities` fields replaced.
+
+**What it does NOT do:**
+
+* No API key, no auth header, no cookie.
+* No `.env`, no `os.environ.get` / `os.getenv` for credentials.
+* No broker SDK, no order placement, no live trading.
+* No subprocess, no shell-out.
+* No new runtime dependency (stdlib only).
+* No widening of the `MarketContext` schema.
+* No silent fallback for missing data. If the previous SP500
+  observation needed to compute `sp500_change_pct` is missing,
+  `FredSP500AdapterError` is raised. If the previous SP500 value
+  is non-positive, `FredSP500AdapterError` is raised. The adapter
+  does not silently treat "missing" or "non-positive" as a neutral
+  contribution.
