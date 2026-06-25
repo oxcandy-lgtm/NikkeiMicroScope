@@ -117,9 +117,10 @@ and no recurring sync pressure beyond explicit workflow / manual runs.
 |       |-- adapters.py
 |       |-- fixture_loader.py
 |       |-- validate.py
-|       |-- public_sources.py          # Shared FRED parsing helpers
-|       |-- fred_treasury.py           # FRED DGS2/DGS10 adapter
-|       `-- fred_sp500.py              # FRED SP500 adapter
+    |       |-- public_sources.py          # Shared FRED parsing helpers
+    |       |-- fred_treasury.py           # FRED DGS2/DGS10 adapter
+    |       |-- fred_sp500.py              # FRED SP500 adapter
+    |       `-- fred_usdjpy.py             # FRED DEXJPUS adapter
 |-- tests/                            # stdlib unittest suite
 |-- fixtures/                         # Local sample fixtures (no network)
 |   `-- market_context/
