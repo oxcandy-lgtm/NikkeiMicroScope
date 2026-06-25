@@ -95,8 +95,11 @@ For a given ``session_date``:
 2. The latest DGS10 observation at or before ``session_date`` is
    selected. If none exists, ``FredTreasuryAdapterError`` is raised.
 3. The previous DGS10 observation (strictly before the selected
-   date) is used to compute ``us10y_change_bp``. If none exists,
-   ``us10y_change_bp`` is set to ``0.0``.
+   date) is used to compute ``us10y_change_bp``. **If none
+   exists, ``FredTreasuryAdapterError`` is raised.** A missing
+   previous observation is never silently treated as a neutral
+   contribution: that would corrupt downstream scoring by making
+   "missing" indistinguishable from "zero change".
 4. The selected DGS2 and DGS10 dates must match. If they differ,
    ``FredTreasuryAdapterError`` is raised.
 
@@ -128,6 +131,14 @@ The adapter is exercised by:
 * Parser unit tests (no HTTP, no subprocess, no env reads).
 * Adapter unit tests with injected ``http_get`` and a fixture-backed
   ``MarketContextAdapter``.
+* A negative test for missing previous DGS10 that asserts
+  ``FredTreasuryAdapterError`` is raised (no silent fallback).
+* A negative test for DGS2/DGS10 date mismatch that asserts
+  ``FredTreasuryAdapterError`` is raised.
+* A schema-conformance test that the returned ``MarketContext`` passes
+  ``validate_market_context``.
+* A test that only ``us_yields`` is overlaid (all other fields come
+  from the base adapter unchanged).
 * Network-safety tests that mock ``socket.socket``,
   ``subprocess.{Popen,run,call}``, and ``os.environ.get`` / ``os.getenv``
   during a representative ``load(...)`` call.

@@ -205,7 +205,7 @@ class FredTreasuryOverlayAdapterTests(unittest.TestCase):
             if "DGS2" in url:
                 return "DATE,DGS2\n2026-06-23,4.10\n"
             if "DGS10" in url:
-                return "DATE,DGS10\n2026-06-23,4.00\n"
+                return "DATE,DGS10\n2026-06-23,4.00\n2026-06-22,3.98\n"
             return ""
 
         adapter = FredTreasuryOverlayAdapter(
@@ -228,6 +228,21 @@ class FredTreasuryOverlayAdapterTests(unittest.TestCase):
         with self.assertRaises(FredTreasuryAdapterError):
             adapter.load("2026-06-24")
 
+    def test_load_raises_when_no_previous_dgs10(self) -> None:
+        # Only one DGS10 observation exists, so there is no
+        # "previous" observation for us10y_change_bp. The adapter
+        # must raise FredTreasuryAdapterError rather than silently
+        # treating the missing previous as a neutral contribution.
+        single_dgs10_csv = "DATE,DGS10\n2024-01-03,4.02\n"
+        single_dgs2_csv = "DATE,DGS2\n2024-01-02,4.28\n2024-01-03,4.30\n"
+        adapter = FredTreasuryOverlayAdapter(
+            base_adapter=_baseline_adapter(),
+            http_get=_make_fake_http_get(single_dgs2_csv, single_dgs10_csv),
+        )
+        with self.assertRaises(FredTreasuryAdapterError) as cm:
+            adapter.load("2026-06-24")
+        self.assertIn("previous DGS10", str(cm.exception))
+
     def test_load_does_not_mutate_baseline_context(self) -> None:
         # The adapter should produce a new MarketContext, not mutate
         # the one from the base adapter.
@@ -236,7 +251,7 @@ class FredTreasuryOverlayAdapterTests(unittest.TestCase):
         original_yields = original_ctx.us_yields
         # Use CSVs in range to trigger an actual overlay.
         dgs2_csv = "DATE,DGS2\n2026-06-23,4.10\n"
-        dgs10_csv = "DATE,DGS10\n2026-06-23,4.00\n"
+        dgs10_csv = "DATE,DGS10\n2026-06-23,4.00\n2026-06-22,3.98\n"
         adapter = FredTreasuryOverlayAdapter(
             base_adapter=base,
             http_get=_make_fake_http_get(dgs2_csv, dgs10_csv),
@@ -259,7 +274,7 @@ class FredTreasuryOverlayAdapterNetworkSafetyTests(unittest.TestCase):
 
     def test_no_socket_call_when_http_get_injected(self) -> None:
         dgs2_csv = "DATE,DGS2\n2026-06-23,4.10\n"
-        dgs10_csv = "DATE,DGS10\n2026-06-23,4.00\n"
+        dgs10_csv = "DATE,DGS10\n2026-06-23,4.00\n2026-06-22,3.98\n"
         with mock.patch("socket.socket") as mocked_socket, mock.patch(
             "socket.create_connection"
         ) as mocked_connect:
@@ -273,7 +288,7 @@ class FredTreasuryOverlayAdapterNetworkSafetyTests(unittest.TestCase):
 
     def test_no_subprocess_call(self) -> None:
         dgs2_csv = "DATE,DGS2\n2026-06-23,4.10\n"
-        dgs10_csv = "DATE,DGS10\n2026-06-23,4.00\n"
+        dgs10_csv = "DATE,DGS10\n2026-06-23,4.00\n2026-06-22,3.98\n"
         with mock.patch("subprocess.Popen") as mocked_popen, mock.patch(
             "subprocess.run"
         ) as mocked_run, mock.patch("subprocess.call") as mocked_call:
@@ -288,7 +303,7 @@ class FredTreasuryOverlayAdapterNetworkSafetyTests(unittest.TestCase):
 
     def test_no_env_credential_reads(self) -> None:
         dgs2_csv = "DATE,DGS2\n2026-06-23,4.10\n"
-        dgs10_csv = "DATE,DGS10\n2026-06-23,4.00\n"
+        dgs10_csv = "DATE,DGS10\n2026-06-23,4.00\n2026-06-22,3.98\n"
         with mock.patch("os.environ.get") as mocked_get, mock.patch(
             "os.getenv"
         ) as mocked_getenv:
@@ -333,7 +348,7 @@ class FredTreasuryAdapterSchemaTests(unittest.TestCase):
 
     def test_returned_context_passes_validate_market_context(self) -> None:
         dgs2_csv = "DATE,DGS2\n2026-06-23,4.10\n"
-        dgs10_csv = "DATE,DGS10\n2026-06-23,4.00\n"
+        dgs10_csv = "DATE,DGS10\n2026-06-23,4.00\n2026-06-22,3.98\n"
         adapter = FredTreasuryOverlayAdapter(
             base_adapter=_baseline_adapter(),
             http_get=_make_fake_http_get(dgs2_csv, dgs10_csv),
@@ -348,7 +363,7 @@ class FredTreasuryAdapterSchemaTests(unittest.TestCase):
     def test_only_us_yields_overlaid(self) -> None:
         # All other fields should come from the base adapter unchanged.
         dgs2_csv = "DATE,DGS2\n2026-06-23,4.10\n"
-        dgs10_csv = "DATE,DGS10\n2026-06-23,4.00\n"
+        dgs10_csv = "DATE,DGS10\n2026-06-23,4.00\n2026-06-22,3.98\n"
         adapter = FredTreasuryOverlayAdapter(
             base_adapter=_baseline_adapter(),
             http_get=_make_fake_http_get(dgs2_csv, dgs10_csv),

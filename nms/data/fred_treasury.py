@@ -92,15 +92,18 @@ class FredTreasuryOverlayAdapter:
         self._http_get: HttpGet = http_get or self._default_http_get
         self._source_config = source_config or FredTreasurySourceConfig()
 
-    @staticmethod
-    def _default_http_get(url: str) -> str:
+    def _default_http_get(self, url: str) -> str:
         """Default HTTP GET using stdlib ``urllib.request``. No auth, no headers.
 
         The default fetcher is intentionally minimal: no headers, no
         cookies, no auth. The FRED CSVs are publicly downloadable
-        without authentication.
+        without authentication. The timeout is taken from
+        ``self._source_config.timeout_seconds`` rather than being
+        hardcoded, so tests and operators can tune it.
         """
-        with urllib.request.urlopen(url, timeout=10.0) as response:
+        with urllib.request.urlopen(
+            url, timeout=self._source_config.timeout_seconds
+        ) as response:
             return response.read().decode("utf-8")
 
     def load(self, session_date: str) -> MarketContext:
@@ -158,10 +161,19 @@ class FredTreasuryOverlayAdapter:
         us2y = dgs2_obs.value
         us10y = dgs10_obs.value
         us10y_minus_us2y = us10y - us2y
-        if dgs10_prev is not None:
-            us10y_change_bp = (dgs10_obs.value - dgs10_prev.value) * 100.0
-        else:
-            us10y_change_bp = 0.0
+        # The previous DGS10 observation is required to compute
+        # ``us10y_change_bp``. A missing previous DGS10 is raised as
+        # an error rather than silently treated as a neutral
+        # contribution. Silently mapping "missing" to a neutral
+        # contribution would corrupt downstream scoring by making
+        # missing data indistinguishable from a zero change.
+        if dgs10_prev is None:
+            raise FredTreasuryAdapterError(
+                "No previous DGS10 observation available "
+                f"before {dgs10_obs.date.isoformat()} for "
+                "us10y_change_bp"
+            )
+        us10y_change_bp = (dgs10_obs.value - dgs10_prev.value) * 100.0
 
         # 5. Overlay only us_yields via dataclasses.replace
         new_ctx = replace(

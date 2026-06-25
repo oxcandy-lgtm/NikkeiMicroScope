@@ -89,6 +89,24 @@ def main() -> int:
     except Exception as e:
         print(f"[dry-run] correctly raised on date mismatch: {type(e).__name__}")
 
+    # Negative test: missing previous DGS10 should raise.
+    SINGLE_DGS10 = "DATE,DGS10\n2026-06-23,4.00\n"  # no previous obs
+    single_dgs10_adapter = FredTreasuryOverlayAdapter(
+        base_adapter=base_adapter,
+        http_get=lambda url: (
+            SAMPLE_DGS2_CSV if "DGS2" in url else SINGLE_DGS10
+        ),
+    )
+    try:
+        single_dgs10_adapter.load("2026-06-24")
+        print("[dry-run] ERROR: expected missing-previous-DGS10 error")
+        return 1
+    except Exception as e:
+        print(
+            f"[dry-run] correctly raised on missing previous DGS10: "
+            f"{type(e).__name__}"
+        )
+
     print("[dry-run] ok")
     return 0
 
