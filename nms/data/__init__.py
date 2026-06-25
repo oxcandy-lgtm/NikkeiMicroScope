@@ -33,12 +33,24 @@ from nms.data.adapters import (
     FixtureMarketContextAdapter,
     MarketContextAdapter,
 )
+from nms.data.fred_treasury import FredTreasuryOverlayAdapter
+from nms.data.public_sources import (
+    FredObservation,
+    FredTreasuryAdapterError,
+    FredTreasurySourceConfig,
+    _parse_fred_csv,
+    _parse_fred_csv_with_previous,
+)
 from nms.data.validate import ValidationError, validate_market_context
 
 __all__ = [
     "EconomicEventRisk",
     "EventItem",
     "FixtureMarketContextAdapter",
+    "FredObservation",
+    "FredTreasuryAdapterError",
+    "FredTreasuryOverlayAdapter",
+    "FredTreasurySourceConfig",
     "Fx",
     "IntradayRange",
     "MarketContext",
@@ -50,5 +62,7 @@ __all__ = [
     "UsYields",
     "ValidationError",
     "VolatilityContext",
+    "_parse_fred_csv",
+    "_parse_fred_csv_with_previous",
     "validate_market_context",
 ]

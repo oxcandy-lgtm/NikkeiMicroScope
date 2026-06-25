@@ -217,3 +217,72 @@ A reviewer of a new or modified adapter PR must confirm, at minimum:
       body justifies why this is the right time to introduce it and
       cites the operator charter).
 - [ ] The PR body lists the new `must_not_do` set if any were relaxed.
+
+## 8. Approved Network Adapters
+
+The data layer is local-first at MVP. Network adapters must be
+approved per the rules in this section before they can be merged.
+
+### 8.1 `FredTreasuryOverlayAdapter` (first approved public no-auth network adapter)
+
+`FredTreasuryOverlayAdapter` is the **first approved public, no-auth
+network adapter** in NikkeiMicroScope. It is implemented in
+`nms/data/fred_treasury.py` and is documented in full by
+[`docs/fred-treasury-adapter.md`](fred-treasury-adapter.md). The
+summary below is the contract view; the linked document is
+authoritative for the implementation.
+
+**What it reads:** only the two FRED series below, both public,
+no-auth, no API key, downloaded as CSV over plain HTTPS.
+
+| Series | Meaning | Unit |
+| --- | --- | --- |
+| DGS2 | U.S. Treasury 2-Year Constant Maturity | percent |
+| DGS10 | U.S. Treasury 10-Year Constant Maturity | percent |
+
+**What it overlays on the baseline `MarketContext`:** only the
+four `us_yields` fields:
+
+| Target field | Source |
+| --- | --- |
+| `us2y` | DGS2 value at the selected date |
+| `us10y` | DGS10 value at the selected date |
+| `us10y_minus_us2y` | `us10y - us2y` |
+| `us10y_change_bp` | `(DGS10_today - DGS10_yesterday) * 100` |
+
+**What it returns:** a new frozen, fully validated `MarketContext`.
+The returned context is re-validated through
+`validate_market_context` to enforce the schema and nested
+strictness. The adapter does not mutate the base context; it
+returns a new one with `us_yields` replaced.
+
+**What it does NOT do:**
+
+* No API key, no auth header, no cookie.
+* No `.env`, no `os.environ.get` / `os.getenv` for credentials.
+* No broker SDK, no order placement, no live trading.
+* No subprocess, no shell-out.
+* No new runtime dependency (stdlib only).
+* No widening of the `MarketContext` schema.
+* No silent fallback for missing data. If the previous DGS10
+  observation needed to compute `us10y_change_bp` is missing,
+  `FredTreasuryAdapterError` is raised. The adapter does not
+  silently treat "missing" as "neutral".
+
+**Required future-adapter pattern:** any future public network
+adapter (equities, FX, SOX, Nikkei) must:
+
+1. Implement the `MarketContextAdapter` protocol.
+2. Update this section (`§8`) of this document with the new
+   adapter's contract.
+3. Link to a dedicated adapter doc (e.g.
+   `docs/fred-treasury-adapter.md`) that is the authoritative
+   reference for that adapter.
+4. Add AST-level and runtime tests that mirror §3 and §4 of this
+   contract.
+5. Add a network-safety test that mocks `socket.socket`,
+   `subprocess.*`, and `os.environ.get` during a representative
+   `load(...)` call.
+6. Never silently fall back to a neutral value on missing data.
+   A missing input is a `FredTreasuryAdapterError` (or
+   equivalent), not a "neutral contribution".
