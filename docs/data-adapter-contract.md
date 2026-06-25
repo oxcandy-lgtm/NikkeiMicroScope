@@ -335,3 +335,52 @@ returns a new one with the two `us_equities` fields replaced.
   is non-positive, `FredSP500AdapterError` is raised. The adapter
   does not silently treat "missing" or "non-positive" as a neutral
   contribution.
+
+## 8.3 `FredUSDJPYOverlayAdapter` (third approved public no-auth network adapter)
+
+`FredUSDJPYOverlayAdapter` is the **third approved public, no-auth
+network adapter** in NikkeiMicroScope. It is implemented in
+`nms/data/fred_usdjpy.py` and is documented in full by
+[`docs/fred-usdjpy-adapter.md`](fred-usdjpy-adapter.md). The
+summary below is the contract view; the linked document is
+authoritative for the implementation.
+
+**What it reads:** only the FRED series below, public, no-auth, no
+API key, downloaded as CSV over plain HTTPS.
+
+| Series | Meaning | Unit |
+| --- | --- | --- |
+| DEXJPUS | Japanese Yen to U.S. Dollar Spot Exchange Rate | Japanese yen to one U.S. dollar |
+
+**What it overlays on the baseline `MarketContext`:** only the
+two `fx` fields:
+
+| Target field | Source |
+| --- | --- |
+| `fx.usdjpy` | DEXJPUS value at the selected date |
+| `fx.usdjpy_change_pct` | `((DEXJPUS_today / DEXJPUS_yesterday) - 1) * 100` |
+
+All other `MarketContext` sections come from the base adapter and
+are left unchanged.
+
+**What it returns:** a new frozen, fully validated `MarketContext`.
+The returned context is re-validated through
+`validate_market_context` to enforce the schema and nested
+strictness. The adapter does not mutate the base context; it
+returns a new one with the two `fx` fields replaced. The `load()`
+method is annotated as returning `MarketContext`.
+
+**What it does NOT do:**
+
+* No API key, no auth header, no cookie.
+* No `.env`, no `os.environ.get` / `os.getenv` for credentials.
+* No broker SDK, no order placement, no live trading.
+* No subprocess, no shell-out.
+* No new runtime dependency (stdlib only).
+* No widening of the `MarketContext` schema.
+* No silent fallback for missing data. If the previous DEXJPUS
+  observation needed to compute `usdjpy_change_pct` is missing,
+  `FredUSDJPYAdapterError` is raised. If the previous DEXJPUS
+  value is non-positive, `FredUSDJPYAdapterError` is raised. The
+  adapter does not silently treat "missing" or "non-positive" as
+  a neutral contribution.

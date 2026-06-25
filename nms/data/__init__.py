@@ -39,6 +39,11 @@ from nms.data.fred_sp500 import (
     FredSP500OverlayAdapter,
     FredSP500SourceConfig,
 )
+from nms.data.fred_usdjpy import (
+    FredUSDJPYAdapterError,
+    FredUSDJPYOverlayAdapter,
+    FredUSDJPYSourceConfig,
+)
 from nms.data.public_sources import (
     FredObservation,
     FredTreasuryAdapterError,
@@ -59,6 +64,9 @@ __all__ = [
     "FredTreasuryAdapterError",
     "FredTreasuryOverlayAdapter",
     "FredTreasurySourceConfig",
+    "FredUSDJPYAdapterError",
+    "FredUSDJPYOverlayAdapter",
+    "FredUSDJPYSourceConfig",
     "Fx",
     "IntradayRange",
     "MarketContext",
