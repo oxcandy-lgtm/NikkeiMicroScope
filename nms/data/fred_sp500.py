@@ -34,13 +34,16 @@ import io
 import urllib.request
 from dataclasses import asdict, dataclass, replace
 from datetime import date, datetime
-from typing import Any, Callable, List, Mapping, Optional, Protocol
+from typing import Callable, List, Optional, Protocol
+
+from nms.data.models import MarketContext, UsEquities
+from nms.data.validate import validate_market_context
 
 
 class MarketContextAdapter(Protocol):
     """Read-only adapter that produces a :class:`MarketContext` for a date."""
 
-    def load(self, session_date: str) -> Any:
+    def load(self, session_date: str) -> MarketContext:
         ...
 
 
@@ -204,7 +207,7 @@ class FredSP500OverlayAdapter:
         ) as response:
             return response.read().decode("utf-8")
 
-    def load(self, session_date: str) -> Any:
+    def load(self, session_date: str) -> MarketContext:
         """Load a :class:`MarketContext` with FRED SP500 overlaid.
 
         Steps:
@@ -232,8 +235,6 @@ class FredSP500OverlayAdapter:
         """
         # 1. Load baseline
         baseline = self._base_adapter.load(session_date)
-        from nms.data.models import MarketContext, UsEquities
-        from nms.data.validate import validate_market_context
 
         if not isinstance(baseline, MarketContext):
             raise FredSP500AdapterError(
