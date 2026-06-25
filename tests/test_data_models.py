@@ -56,10 +56,17 @@ def _minimal_valid_payload() -> dict:
             "dow": 1.0,
             "nasdaq100": 1.0,
             "russell2000": 1.0,
+            "sp500_change_pct": 0.0,
+            "nasdaq100_change_pct": 0.0,
         },
-        "semiconductor": {"sox": 1.0},
-        "fx": {"usdjpy": 1.0},
-        "us_yields": {"us2y": 1.0, "us10y": 1.0, "us10y_minus_us2y": 0.0},
+        "semiconductor": {"sox": 1.0, "sox_change_pct": 0.0},
+        "fx": {"usdjpy": 1.0, "usdjpy_change_pct": 0.0},
+        "us_yields": {
+            "us2y": 1.0,
+            "us10y": 1.0,
+            "us10y_minus_us2y": 0.0,
+            "us10y_change_bp": 0.0,
+        },
         "nikkei_night_session": {
             "close": 1.0,
             "high": 1.0,
@@ -217,6 +224,104 @@ class SchemaNegativeTests(unittest.TestCase):
         ]
         with self.assertRaises(ValidationError):
             validate_market_context(payload)
+
+    # --- New direction-score change fields (PR #6) ---------------
+
+    def test_missing_sp500_change_pct_fails(self) -> None:
+        payload = _minimal_valid_payload()
+        del payload["us_equities"]["sp500_change_pct"]
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
+    def test_missing_nasdaq100_change_pct_fails(self) -> None:
+        payload = _minimal_valid_payload()
+        del payload["us_equities"]["nasdaq100_change_pct"]
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
+    def test_missing_sox_change_pct_fails(self) -> None:
+        payload = _minimal_valid_payload()
+        del payload["semiconductor"]["sox_change_pct"]
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
+    def test_missing_usdjpy_change_pct_fails(self) -> None:
+        payload = _minimal_valid_payload()
+        del payload["fx"]["usdjpy_change_pct"]
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
+    def test_missing_us10y_change_bp_fails(self) -> None:
+        payload = _minimal_valid_payload()
+        del payload["us_yields"]["us10y_change_bp"]
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
+    def test_bool_rejected_for_sp500_change_pct(self) -> None:
+        payload = _minimal_valid_payload()
+        payload["us_equities"]["sp500_change_pct"] = True
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
+    def test_bool_rejected_for_nasdaq100_change_pct(self) -> None:
+        payload = _minimal_valid_payload()
+        payload["us_equities"]["nasdaq100_change_pct"] = True
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
+    def test_bool_rejected_for_sox_change_pct(self) -> None:
+        payload = _minimal_valid_payload()
+        payload["semiconductor"]["sox_change_pct"] = True
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
+    def test_bool_rejected_for_usdjpy_change_pct(self) -> None:
+        payload = _minimal_valid_payload()
+        payload["fx"]["usdjpy_change_pct"] = True
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
+    def test_bool_rejected_for_us10y_change_bp(self) -> None:
+        payload = _minimal_valid_payload()
+        payload["us_yields"]["us10y_change_bp"] = True
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
+    def test_string_rejected_for_new_numeric_field(self) -> None:
+        payload = _minimal_valid_payload()
+        payload["us_equities"]["sp500_change_pct"] = "0.35"
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
+    def test_extra_nested_us10y_change_field_rejected(self) -> None:
+        # ``us_yields`` only allows the four documented keys. The new
+        # change field is required, but other new keys are not.
+        payload = _minimal_valid_payload()
+        payload["us_yields"]["us2y_change_bp"] = 2.0
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
+    def test_extra_nested_fx_pair_rejected(self) -> None:
+        # ``fx`` only allows ``usdjpy`` and ``usdjpy_change_pct``.
+        payload = _minimal_valid_payload()
+        payload["fx"]["eurusd_change_pct"] = 0.1
+        with self.assertRaises(ValidationError):
+            validate_market_context(payload)
+
+    def test_dataclass_exposes_new_fields(self) -> None:
+        # End-to-end: the dataclasses accept the new fields and
+        # expose them as attributes.
+        ctx = validate_market_context(_minimal_valid_payload())
+        self.assertTrue(hasattr(ctx.us_equities, "sp500_change_pct"))
+        self.assertTrue(hasattr(ctx.us_equities, "nasdaq100_change_pct"))
+        self.assertTrue(hasattr(ctx.semiconductor, "sox_change_pct"))
+        self.assertTrue(hasattr(ctx.fx, "usdjpy_change_pct"))
+        self.assertTrue(hasattr(ctx.us_yields, "us10y_change_bp"))
+        self.assertEqual(ctx.us_equities.sp500_change_pct, 0.0)
+        self.assertEqual(ctx.us_equities.nasdaq100_change_pct, 0.0)
+        self.assertEqual(ctx.semiconductor.sox_change_pct, 0.0)
+        self.assertEqual(ctx.fx.usdjpy_change_pct, 0.0)
+        self.assertEqual(ctx.us_yields.us10y_change_bp, 0.0)
 
     def test_timezone_must_be_mvp_canonical(self) -> None:
         payload = _minimal_valid_payload()

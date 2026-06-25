@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Tuple
 
 from nms.core.constants import (
+    BASIS_POINT_CHANGE_SATURATION,
     DIRECTION_WEIGHTS,
     EVENT_IMPACT_TABLE,
     EVENT_RISK_REASON_THRESHOLD,
@@ -71,30 +72,76 @@ def _normalize_percent_change(percent_change: float) -> float:
     return _clamp(percent_change / PERCENT_CHANGE_SATURATION, -1.0, 1.0)
 
 
+def _normalize_basis_point_change(basis_point_change: float) -> float:
+    """Map a basis-point change to a signal in ``[-1, +1]``.
+
+    Saturation is at ``BASIS_POINT_CHANGE_SATURATION`` (default:
+    25.0 bp). A move of +/- 25 bp fully drives the signal.
+    """
+    return _clamp(
+        basis_point_change / BASIS_POINT_CHANGE_SATURATION, -1.0, 1.0
+    )
+
+
 def direction_score(context: MarketContext) -> float:
     """Compute the advisory direction score in ``[-1, +1]``.
 
-    MVP normalization policy (see ``docs/core-scoring-contract.md``):
+    Formula (see ``docs/core-scoring-contract.md``):
 
-    * Only ``nikkei_night_session.percent_change`` is currently used.
-      Its contribution is ``DIRECTION_WEIGHTS["nikkei_night"] * s``,
-      where ``s`` is the bounded normalizer applied to the percent
-      change.
-    * The other five slots in ``DIRECTION_WEIGHTS`` contribute a
-      neutral ``0.0`` at MVP because the corresponding daily-change
-      fields are not yet part of the ``MarketContext`` schema. The
-      weights are reserved for future use and the sum is unchanged.
-    * Do not invent change values from absolute levels. The neutral
-      contribution is the honest answer for MVP.
+    ```
+    direction_score = clamp(
+        0.20 * normalize_pct(us_equities.nasdaq100_change_pct)
+      + 0.20 * normalize_pct(semiconductor.sox_change_pct)
+      + 0.10 * normalize_pct(us_equities.sp500_change_pct)
+      + 0.20 * normalize_pct(fx.usdjpy_change_pct)
+      + 0.10 * normalize_bp(-us_yields.us10y_change_bp)
+      + 0.20 * normalize_pct(nikkei_night_session.percent_change),
+        -1.0,
+        1.0,
+    )
+    ```
+
+    Sign conventions:
+
+    * USDJPY positive change means JPY weaker, which is bullish
+      for Nikkei. The value is used as-is (positive contribution).
+    * US 10Y positive bp change means yields up, which is bearish
+      for Nikkei. The value is sign-flipped (``-us10y_change_bp``)
+      so that higher yields reduce the score.
+    * Equities (Nasdaq-100, SOX, S&P 500) and Nikkei night-session
+      positive changes are bullish. The values are used as-is.
 
     The result is clamped to ``[-1, +1]`` as a defense in depth even
-    though the bounded normalizer and the weights already guarantee
+    though the bounded normalizers and the weights already guarantee
     the bound in practice.
     """
+    nasdaq_signal = _normalize_percent_change(
+        context.us_equities.nasdaq100_change_pct
+    )
+    sox_signal = _normalize_percent_change(
+        context.semiconductor.sox_change_pct
+    )
+    sp500_signal = _normalize_percent_change(
+        context.us_equities.sp500_change_pct
+    )
+    fx_signal = _normalize_percent_change(
+        context.fx.usdjpy_change_pct
+    )
+    # Sign-flip: higher yields -> lower score.
+    yield_signal = _normalize_basis_point_change(
+        -context.us_yields.us10y_change_bp
+    )
     nikkei_signal = _normalize_percent_change(
         context.nikkei_night_session.percent_change
     )
-    raw = DIRECTION_WEIGHTS["nikkei_night"] * nikkei_signal
+    raw = (
+        DIRECTION_WEIGHTS["nasdaq100"] * nasdaq_signal
+        + DIRECTION_WEIGHTS["sox"] * sox_signal
+        + DIRECTION_WEIGHTS["sp500"] * sp500_signal
+        + DIRECTION_WEIGHTS["usdjpy"] * fx_signal
+        + DIRECTION_WEIGHTS["us10y"] * yield_signal
+        + DIRECTION_WEIGHTS["nikkei_night"] * nikkei_signal
+    )
     return _clamp(raw, -1.0, 1.0)
 
 

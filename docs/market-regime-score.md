@@ -99,30 +99,40 @@ Where `alignment_penalty` rises when the planned side disagrees with
 The `no_trade_threshold` is a documented constant (suggested MVP
 value: `0.5`).
 
-## Implementation Note (PR #4 skeleton)
+## Implementation Note (PR #6 update)
 
-The MVP implementation in `nms/core/` follows the formulas above
-with two clarifications:
+The implementation in `nms/core/` follows the formulas above with
+these clarifications:
 
-1. **`direction_score` is currently driven by the overnight Nikkei
-   move only.** The `MarketContext` schema (see
-   `docs/data-adapter-contract.md`) exposes daily percent change
-   only for `nikkei_night_session.percent_change`. The other five
-   context groups (Nasdaq-100, SOX, S&P 500, USDJPY, US 10Y) carry
-   absolute values, not daily changes. The implementation
-   therefore contributes a neutral `0.0` from those five slots at
-   MVP rather than inventing changes from absolute levels.
-   Activating them requires a schema PR that adds change fields,
-   not a scoring PR.
+1. **`direction_score` now uses all six documented daily-change
+   inputs.** The `MarketContext` schema (see
+   `docs/data-adapter-contract.md`) was widened in PR #6 to
+   expose daily percent change for Nasdaq-100, SOX, S&P 500, and
+   USDJPY, plus a daily bp change for the US 10Y yield. All six
+   feed into `direction_score`. The absolute-level fields
+   (`sp500`, `dow`, `nasdaq100`, `russell2000`, `sox`, `usdjpy`,
+   `us2y`, `us10y`) are retained for downstream reporting.
 
 2. **The bounded normalizer for `percent_change` saturates at
    ±2%.** A 2% move fully drives the signal; larger moves are
    clamped. This is a documented constant
    (`PERCENT_CHANGE_SATURATION = 2.0`) in `nms/core/constants.py`.
 
-The exact formulas, constants, MVP limitations, and non-claims are
-normatively defined in `docs/core-scoring-contract.md`. If this
-section and the contract disagree, the contract wins and this
+3. **The bounded normalizer for `bp_change` saturates at ±25 bp.**
+   A 25 bp move fully drives the signal. This is a documented
+   constant (`BASIS_POINT_CHANGE_SATURATION = 25.0`) in
+   `nms/core/constants.py`. The US 10Y contribution is
+   sign-flipped: higher yields reduce the score.
+
+4. **Score weights are unchanged from the conceptual
+   definitions in §`direction_score` of this document.** The
+   `DIRECTION_WEIGHTS` mapping in `nms/core/constants.py` is
+   identical to the table in the "Direction Score" section
+   above. Reweighting requires a research PR per `AGENTS.md`.
+
+The exact formulas, constants, normalization policy, and non-claims
+are normatively defined in `docs/core-scoring-contract.md`. If
+this section and the contract disagree, the contract wins and this
 section is the bug.
 
 ## Logging No-Trade Reasons and False Positives

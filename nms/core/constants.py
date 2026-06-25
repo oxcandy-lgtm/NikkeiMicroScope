@@ -43,6 +43,13 @@ DIRECTION_WEIGHTS: dict[str, float] = {
 PERCENT_CHANGE_SATURATION: float = 2.0
 
 
+#: A basis-point change of this magnitude saturates the bounded
+#: normalizer at +/- 1.0. The default ``25.0`` means a 25 bp move
+#: fully drives the signal. This is a documented MVP constant;
+#: tuning it requires a research PR per ``AGENTS.md``.
+BASIS_POINT_CHANGE_SATURATION: float = 25.0
+
+
 #: Guard against division by zero in the volatility-score formula.
 #: If ``baseline_vol`` is at or below this threshold, the volatility
 #: score is defined as 0.0 (safe fallback).

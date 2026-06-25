@@ -70,21 +70,41 @@ def _make_context(
     realized_vol: float = 0.0,
     atr_like: float = 1.0,
     events: Iterable[EventItem] = (),
+    sp500_change_pct: float = 0.0,
+    nasdaq100_change_pct: float = 0.0,
+    sox_change_pct: float = 0.0,
+    usdjpy_change_pct: float = 0.0,
+    us10y_change_bp: float = 0.0,
 ) -> MarketContext:
     """Build a MarketContext with controllable scoring inputs.
 
     Defaults are chosen so the formula returns well-defined values
     for the tests below. Callers override the fields they care about.
+    All change-pct / change-bp fields default to 0.0 so that
+    direction_score is driven by a single input at a time in
+    targeted tests.
     """
     return MarketContext(
         session_date="2026-06-24",
         timezone=MVP_TIMEZONE,
         us_equities=UsEquities(
-            sp500=0.0, dow=0.0, nasdaq100=0.0, russell2000=0.0
+            sp500=0.0,
+            dow=0.0,
+            nasdaq100=0.0,
+            russell2000=0.0,
+            sp500_change_pct=sp500_change_pct,
+            nasdaq100_change_pct=nasdaq100_change_pct,
         ),
-        semiconductor=Semiconductor(sox=0.0),
-        fx=Fx(usdjpy=0.0),
-        us_yields=UsYields(us2y=0.0, us10y=0.0, us10y_minus_us2y=0.0),
+        semiconductor=Semiconductor(
+            sox=0.0, sox_change_pct=sox_change_pct
+        ),
+        fx=Fx(usdjpy=0.0, usdjpy_change_pct=usdjpy_change_pct),
+        us_yields=UsYields(
+            us2y=0.0,
+            us10y=0.0,
+            us10y_minus_us2y=0.0,
+            us10y_change_bp=us10y_change_bp,
+        ),
         nikkei_night_session=NikkeiNightSession(
             close=0.0,
             high=0.0,
@@ -129,7 +149,8 @@ class DirectionScoreTests(unittest.TestCase):
 
     def test_positive_pct_saturates(self) -> None:
         # 2% should saturate the bounded normalizer at +1.0; with
-        # weight 0.20 the contribution is 0.20.
+        # weight 0.20 the contribution is 0.20. With all other
+        # change fields at 0.0, the total is exactly 0.20.
         ctx = _make_context(nikkei_pct=2.0)
         self.assertAlmostEqual(direction_score(ctx), 0.20, places=6)
 
@@ -152,6 +173,130 @@ class DirectionScoreTests(unittest.TestCase):
                 d = direction_score(ctx)
                 self.assertGreaterEqual(d, -1.0)
                 self.assertLessEqual(d, 1.0)
+
+    # --- PR #6: each of the six inputs contributes to direction ---
+
+    def test_zero_changes_all_six_inputs_yields_zero(self) -> None:
+        # All six change fields at 0.0 -> direction_score == 0.0.
+        ctx = _make_context(
+            nikkei_pct=0.0,
+            sp500_change_pct=0.0,
+            nasdaq100_change_pct=0.0,
+            sox_change_pct=0.0,
+            usdjpy_change_pct=0.0,
+            us10y_change_bp=0.0,
+        )
+        self.assertEqual(direction_score(ctx), 0.0)
+
+    def test_uses_nasdaq100_change_pct(self) -> None:
+        # +2% nasdaq with everything else 0 -> 0.20 * 1.0 = 0.20
+        ctx = _make_context(nasdaq100_change_pct=2.0)
+        self.assertAlmostEqual(
+            direction_score(ctx), 0.20, places=6
+        )
+
+    def test_uses_sox_change_pct(self) -> None:
+        ctx = _make_context(sox_change_pct=2.0)
+        self.assertAlmostEqual(direction_score(ctx), 0.20, places=6)
+
+    def test_uses_sp500_change_pct(self) -> None:
+        # sp500 has weight 0.10
+        ctx = _make_context(sp500_change_pct=2.0)
+        self.assertAlmostEqual(direction_score(ctx), 0.10, places=6)
+
+    def test_uses_usdjpy_change_pct(self) -> None:
+        # usdjpy positive is bullish (JPY weaker -> Nikkei up)
+        ctx = _make_context(usdjpy_change_pct=2.0)
+        self.assertAlmostEqual(direction_score(ctx), 0.20, places=6)
+
+    def test_usdjpy_negative_change_is_bearish(self) -> None:
+        ctx = _make_context(usdjpy_change_pct=-2.0)
+        self.assertAlmostEqual(direction_score(ctx), -0.20, places=6)
+
+    def test_sign_flips_us10y_change_bp(self) -> None:
+        # us10y positive bp -> yields up -> bearish -> negative score
+        # weight is 0.10
+        ctx = _make_context(us10y_change_bp=25.0)
+        self.assertAlmostEqual(
+            direction_score(ctx), -0.10, places=6
+        )
+
+    def test_us10y_negative_bp_change_is_bullish(self) -> None:
+        # yields down -> bullish -> positive score
+        ctx = _make_context(us10y_change_bp=-25.0)
+        self.assertAlmostEqual(
+            direction_score(ctx), 0.10, places=6
+        )
+
+    def test_us10y_bp_saturates(self) -> None:
+        # 100 bp -> saturates the bounded normalizer at -1.0
+        # weight 0.10 -> -0.10
+        ctx = _make_context(us10y_change_bp=100.0)
+        self.assertAlmostEqual(
+            direction_score(ctx), -0.10, places=6
+        )
+
+    def test_still_uses_nikkei_night_session(self) -> None:
+        # Regression: the existing nikkei input is still wired in.
+        ctx = _make_context(nikkei_pct=2.0)
+        self.assertAlmostEqual(
+            direction_score(ctx), 0.20, places=6
+        )
+
+    def test_all_positive_setup_yields_positive(self) -> None:
+        # All five positive pct changes + negative bp change (yields
+        # down). The sum of contributions is 0.20 + 0.20 + 0.10 +
+        # 0.20 + 0.10 + 0.20 = 1.00, clamped to 1.0.
+        ctx = _make_context(
+            nikkei_pct=2.0,
+            sp500_change_pct=2.0,
+            nasdaq100_change_pct=2.0,
+            sox_change_pct=2.0,
+            usdjpy_change_pct=2.0,
+            us10y_change_bp=-25.0,
+        )
+        self.assertAlmostEqual(
+            direction_score(ctx), 1.0, places=6
+        )
+
+    def test_adverse_setup_yields_negative(self) -> None:
+        # All five negative pct changes + positive bp change (yields
+        # up). The sum is clamped to -1.0.
+        ctx = _make_context(
+            nikkei_pct=-2.0,
+            sp500_change_pct=-2.0,
+            nasdaq100_change_pct=-2.0,
+            sox_change_pct=-2.0,
+            usdjpy_change_pct=-2.0,
+            us10y_change_bp=25.0,
+        )
+        self.assertAlmostEqual(
+            direction_score(ctx), -1.0, places=6
+        )
+
+    def test_mixed_setup_uses_each_input(self) -> None:
+        # Sanity: with all six inputs at a non-extreme value, the
+        # score is the weighted sum of the bounded normalizers.
+        # Each pct input at 1.0 -> normalizer 0.5 (since /2.0).
+        # Each pct contribution: weight * 0.5.
+        # us10y_change_bp = 1.0 -> sign-flipped to -1.0 ->
+        # normalize_bp(-1.0) = -1.0 / 25.0 = -0.04 ->
+        # contribution = 0.10 * (-0.04) = -0.004.
+        # Sum: 0.20*0.5 + 0.20*0.5 + 0.10*0.5 + 0.20*0.5
+        #     + 0.10*(-0.04) + 0.20*0.5
+        #   = 0.10 + 0.10 + 0.05 + 0.10 - 0.004 + 0.10
+        #   = 0.446
+        ctx = _make_context(
+            nikkei_pct=1.0,
+            sp500_change_pct=1.0,
+            nasdaq100_change_pct=1.0,
+            sox_change_pct=1.0,
+            usdjpy_change_pct=1.0,
+            us10y_change_bp=1.0,
+        )
+        self.assertAlmostEqual(
+            direction_score(ctx), 0.446, places=6
+        )
 
 
 class VolatilityScoreTests(unittest.TestCase):
