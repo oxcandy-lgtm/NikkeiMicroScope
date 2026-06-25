@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from nms.core.classification import classify
 from nms.core.constants import (
+    BASIS_POINT_CHANGE_SATURATION,
     DIRECTION_WEIGHTS,
     EVENT_IMPACT_TABLE,
     NO_TRADE_THRESHOLD,
@@ -39,6 +40,7 @@ from nms.core.scoring import (
 )
 
 __all__ = [
+    "BASIS_POINT_CHANGE_SATURATION",
     "DIRECTION_WEIGHTS",
     "EVENT_IMPACT_TABLE",
     "NO_TRADE_THRESHOLD",

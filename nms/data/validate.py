@@ -127,13 +127,25 @@ def _reject_extra_keys(
 
 
 #: Allowed keys for the ``us_equities`` nested object.
-_ALLOWED_US_EQUITIES_KEYS = ("sp500", "dow", "nasdaq100", "russell2000")
+_ALLOWED_US_EQUITIES_KEYS = (
+    "sp500",
+    "dow",
+    "nasdaq100",
+    "russell2000",
+    "sp500_change_pct",
+    "nasdaq100_change_pct",
+)
 #: Allowed keys for the ``semiconductor`` nested object.
-_ALLOWED_SEMICONDUCTOR_KEYS = ("sox",)
+_ALLOWED_SEMICONDUCTOR_KEYS = ("sox", "sox_change_pct")
 #: Allowed keys for the ``fx`` nested object.
-_ALLOWED_FX_KEYS = ("usdjpy",)
+_ALLOWED_FX_KEYS = ("usdjpy", "usdjpy_change_pct")
 #: Allowed keys for the ``us_yields`` nested object.
-_ALLOWED_US_YIELDS_KEYS = ("us2y", "us10y", "us10y_minus_us2y")
+_ALLOWED_US_YIELDS_KEYS = (
+    "us2y",
+    "us10y",
+    "us10y_minus_us2y",
+    "us10y_change_bp",
+)
 #: Allowed keys for the ``nikkei_night_session`` nested object.
 _ALLOWED_NIKKEI_NIGHT_KEYS = (
     "close",
@@ -170,17 +182,25 @@ def _build_us_equities(d: Mapping[str, Any]) -> UsEquities:
         dow=_require_number(d, "dow"),
         nasdaq100=_require_number(d, "nasdaq100"),
         russell2000=_require_number(d, "russell2000"),
+        sp500_change_pct=_require_number(d, "sp500_change_pct"),
+        nasdaq100_change_pct=_require_number(d, "nasdaq100_change_pct"),
     )
 
 
 def _build_semiconductor(d: Mapping[str, Any]) -> Semiconductor:
     _reject_extra_keys(d, _ALLOWED_SEMICONDUCTOR_KEYS, "semiconductor")
-    return Semiconductor(sox=_require_number(d, "sox"))
+    return Semiconductor(
+        sox=_require_number(d, "sox"),
+        sox_change_pct=_require_number(d, "sox_change_pct"),
+    )
 
 
 def _build_fx(d: Mapping[str, Any]) -> Fx:
     _reject_extra_keys(d, _ALLOWED_FX_KEYS, "fx")
-    return Fx(usdjpy=_require_number(d, "usdjpy"))
+    return Fx(
+        usdjpy=_require_number(d, "usdjpy"),
+        usdjpy_change_pct=_require_number(d, "usdjpy_change_pct"),
+    )
 
 
 def _build_us_yields(d: Mapping[str, Any]) -> UsYields:
@@ -189,6 +209,7 @@ def _build_us_yields(d: Mapping[str, Any]) -> UsYields:
         us2y=_require_number(d, "us2y"),
         us10y=_require_number(d, "us10y"),
         us10y_minus_us2y=_require_number(d, "us10y_minus_us2y"),
+        us10y_change_bp=_require_number(d, "us10y_change_bp"),
     )
 
 

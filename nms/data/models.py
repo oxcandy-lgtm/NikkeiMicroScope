@@ -21,35 +21,66 @@ MVP_TIMEZONE = "Asia/Tokyo"
 
 @dataclass(frozen=True)
 class UsEquities:
-    """US equity index closes / change values for the session."""
+    """US equity index closes / change values for the session.
+
+    Absolute fields (``sp500``, ``dow``, ``nasdaq100``,
+    ``russell2000``) carry the index level for the session. The
+    ``*_change_pct`` fields carry the daily percent change and
+    are the inputs to ``direction_score`` in
+    ``nms/core/scoring.py``. The two are kept side by side
+    because downstream reporting needs the absolute level for
+    context even though scoring uses the change.
+    """
 
     sp500: float
     dow: float
     nasdaq100: float
     russell2000: float
+    sp500_change_pct: float
+    nasdaq100_change_pct: float
 
 
 @dataclass(frozen=True)
 class Semiconductor:
-    """Semiconductor index context (SOX / Philadelphia Semiconductor Index)."""
+    """Semiconductor index context (SOX / Philadelphia Semiconductor Index).
+
+    ``sox`` is the absolute index level. ``sox_change_pct`` is
+    the daily percent change and is the input to
+    ``direction_score``.
+    """
 
     sox: float
+    sox_change_pct: float
 
 
 @dataclass(frozen=True)
 class Fx:
-    """FX context. ``usdjpy`` is JPY per 1 USD."""
+    """FX context. ``usdjpy`` is JPY per 1 USD.
+
+    ``usdjpy_change_pct`` is the daily percent change of
+    USDJPY (positive = JPY weaker = bullish for Nikkei) and is
+    the input to ``direction_score``.
+    """
 
     usdjpy: float
+    usdjpy_change_pct: float
 
 
 @dataclass(frozen=True)
 class UsYields:
-    """US Treasury yield context (in percent)."""
+    """US Treasury yield context (in percent, plus bp change).
+
+    ``us2y``, ``us10y`` are absolute yields in percent.
+    ``us10y_minus_us2y`` is the 10y-2y spread. ``us10y_change_bp``
+    is the daily change in the 10y yield in basis points
+    (positive = yields up = Nikkei bearish) and is sign-flipped
+    before being used in ``direction_score``.
+    """
 
     us2y: float
     us10y: float
     us10y_minus_us2y: float
+    us10y_change_bp: float
 
 
 @dataclass(frozen=True)

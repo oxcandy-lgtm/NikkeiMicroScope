@@ -45,14 +45,33 @@ probabilities, predictions, or financial advice.
 ### 2.1 `direction_score` — range `[-1, +1]`
 
 ```
-direction_score = clamp(DIRECTION_WEIGHTS["nikkei_night"] * s, -1, +1)
-where s = clamp(nikkei_night_session.percent_change / PERCENT_CHANGE_SATURATION, -1, +1)
+direction_score = clamp(
+    0.20 * normalize_pct(us_equities.nasdaq100_change_pct)
+  + 0.20 * normalize_pct(semiconductor.sox_change_pct)
+  + 0.10 * normalize_pct(us_equities.sp500_change_pct)
+  + 0.20 * normalize_pct(fx.usdjpy_change_pct)
+  + 0.10 * normalize_bp(-us_yields.us10y_change_bp)
+  + 0.20 * normalize_pct(nikkei_night_session.percent_change),
+    -1.0,
+    1.0,
+)
 ```
 
+Where:
+
+- `normalize_pct(x) = clamp(x / PERCENT_CHANGE_SATURATION, -1, +1)`
+- `normalize_bp(x) = clamp(x / BASIS_POINT_CHANGE_SATURATION, -1, +1)`
 - `PERCENT_CHANGE_SATURATION = 2.0` (a 2% move saturates the
   normalizer at ±1.0).
-- The other five slots in `DIRECTION_WEIGHTS` contribute `0.0`
-  at MVP. See §3 for the rationale.
+- `BASIS_POINT_CHANGE_SATURATION = 25.0` (a 25 bp move saturates
+  the normalizer at ±1.0).
+- Sign conventions:
+  - USDJPY positive change means JPY weaker, which is bullish
+    for Nikkei. Used as-is.
+  - US 10Y positive bp change means yields up, which is bearish
+    for Nikkei. Sign-flipped (`-us10y_change_bp`).
+  - Equities (Nasdaq-100, SOX, S&P 500) and Nikkei night-session
+    positive changes are bullish. Used as-is.
 
 ### 2.2 `volatility_score` — range `[0, 1]`
 
@@ -121,31 +140,28 @@ else:
 
 - `NO_TRADE_THRESHOLD = 0.5`.
 
-## 3. MVP Normalization Limitations
+## 3. Normalization Policy
 
 The `MarketContext` schema (defined in `docs/data-adapter-contract.md`
-and `nms/data/models.py`) currently exposes daily percent changes
-**only** for `nikkei_night_session.percent_change`. The other
-fields carry absolute values (e.g. `us_equities.sp500`) that are
-not directly comparable across sessions.
+and `nms/data/models.py`) exposes daily percent changes for the
+five context groups that feed `direction_score`, plus a daily bp
+change for the US 10Y yield. The formula in §2.1 uses all six
+inputs.
 
-MVP normalization policy:
+If a future context group needs to be added to `direction_score`,
+the addition requires:
 
-- `direction_score` uses only `nikkei_night_session.percent_change`
-  via the bounded normalizer in §2.1.
-- The other five slots in `DIRECTION_WEIGHTS` contribute `0.0`
-  (neutral) at MVP. Their weights are reserved so that the sum
-  remains `1.0` and so that future schema changes can activate
-  them without changing the weight structure.
-- We do **not** invent daily changes from absolute levels. Doing
-  so would be a schema decision, not a scoring decision, and would
-  require updating `docs/data-adapter-contract.md`,
-  `nms/data/validate.py`, the fixture, and the tests in the same
-  PR.
+- A schema PR that updates `docs/data-adapter-contract.md`,
+  `nms/data/validate.py`, the fixture, and the data-layer tests.
+- A scoring PR that updates `direction_score` and the
+  `DIRECTION_WEIGHTS` mapping.
+- Both PRs reviewed together, with the weights rebalanced so that
+  the sum remains `1.0`.
 
-This means a typical MVP `direction_score` magnitude is small
-(0.0–0.20) and is dominated by the overnight Nikkei move. This is
-documented and accepted for the skeleton.
+We do **not** invent daily changes from absolute levels. Doing so
+would be a schema decision, not a scoring decision. The absolute
+fields (`sp500`, `sox`, `usdjpy`, `us2y`, `us10y`, etc.) are
+retained for downstream reporting only.
 
 ## 4. No-Trade Reasons
 

@@ -32,10 +32,10 @@ order fields from creeping in.
 | --- | --- | --- |
 | `session_date` | string | ISO-8601 calendar date, e.g. `"2026-06-24"`. |
 | `timezone` | string | Must be `"Asia/Tokyo"` at MVP. |
-| `us_equities` | object | `sp500`, `dow`, `nasdaq100`, `russell2000` (all numeric). |
-| `semiconductor` | object | `sox` (numeric). |
-| `fx` | object | `usdjpy` (numeric, JPY per 1 USD). |
-| `us_yields` | object | `us2y`, `us10y`, `us10y_minus_us2y` (numeric, percent). |
+| `us_equities` | object | Absolute levels (`sp500`, `dow`, `nasdaq100`, `russell2000`) and daily percent changes (`sp500_change_pct`, `nasdaq100_change_pct`). All numeric. |
+| `semiconductor` | object | Absolute level (`sox`) and daily percent change (`sox_change_pct`). Both numeric. |
+| `fx` | object | Absolute level (`usdjpy`, JPY per 1 USD) and daily percent change (`usdjpy_change_pct`). Both numeric. |
+| `us_yields` | object | Absolute yields in percent (`us2y`, `us10y`), the 10y-2y spread (`us10y_minus_us2y`), and the daily change of the 10y yield in basis points (`us10y_change_bp`). All numeric. |
 | `nikkei_night_session` | object | `close`, `high`, `low`, `range`, `percent_change`. |
 | `previous_day` | object | `high`, `low`, `close`, `range`. |
 | `economic_event_risk` | object | `events: [...]` (list of `{name, time_jst?, impact?}`). |
@@ -46,16 +46,37 @@ Numeric fields accept `int` or `float`. `bool` is **rejected** for
 numeric fields (it is technically `int` in Python but is almost always
 a schema bug).
 
+**Absolute vs change fields.** Some context groups carry both an
+absolute level and a daily change:
+
+- `us_equities` carries the index level (`sp500`, etc.) and the
+  daily percent change (`sp500_change_pct`, `nasdaq100_change_pct`).
+- `semiconductor` carries the SOX level (`sox`) and the daily
+  percent change (`sox_change_pct`).
+- `fx` carries the USDJPY level (`usdjpy`) and the daily percent
+  change (`usdjpy_change_pct`).
+- `us_yields` carries the absolute yields in percent (`us2y`,
+  `us10y`), the spread (`us10y_minus_us2y`), and the daily change
+  of the 10y yield in **basis points** (`us10y_change_bp`). The
+  bp unit is intentional: it is the unit the change is reported
+  in by the upstream data source and the unit the scoring engine
+  uses.
+
+The change fields are the inputs to `direction_score` in
+`nms/core/scoring.py`. The absolute fields are kept because
+downstream reporting needs the absolute level for context even
+though scoring uses the change.
+
 **Nested strictness:** every nested object and every event item has
 its own fixed key set, and the validator rejects any key outside that
 set with `nms.data.ValidationError`. The allowed key sets are:
 
 | Path | Allowed keys |
 | --- | --- |
-| `us_equities` | `sp500`, `dow`, `nasdaq100`, `russell2000` |
-| `semiconductor` | `sox` |
-| `fx` | `usdjpy` |
-| `us_yields` | `us2y`, `us10y`, `us10y_minus_us2y` |
+| `us_equities` | `sp500`, `dow`, `nasdaq100`, `russell2000`, `sp500_change_pct`, `nasdaq100_change_pct` |
+| `semiconductor` | `sox`, `sox_change_pct` |
+| `fx` | `usdjpy`, `usdjpy_change_pct` |
+| `us_yields` | `us2y`, `us10y`, `us10y_minus_us2y`, `us10y_change_bp` |
 | `nikkei_night_session` | `close`, `high`, `low`, `range`, `percent_change` |
 | `previous_day` | `high`, `low`, `close`, `range` |
 | `economic_event_risk` | `events` |
@@ -76,6 +97,16 @@ event item) requires updating this document and the validator in
 the same PR. The whitelist rules in `nms/data/validate.py` and the
 table in this section are normative; if they disagree, the validator
 wins and this document is the bug.
+
+### 1.1 Fixture values are synthetic
+
+The sample fixture at
+`fixtures/market_context/sample-session-2026-06-24.json` is
+**synthetic**. The numeric values are plausible shapes chosen to
+exercise the schema and the scoring formulas; they are **not**
+real historical data and must not be cited as such. Adapters that
+read real data must override the sample values; the fixture is
+the test input, not a market record.
 
 ## 2. Adapter Interface
 
