@@ -566,3 +566,34 @@ This layer:
 - must not add a default live pipeline
 - must not commit raw FRED CSV to `exports/`, `fixtures/`,
   or `reports/`
+
+## 8.10 Explicit close-price shadow close
+
+`nms.shadow.close` may create local, append-only, no-cash
+shadow close records from existing shadow trial records
+and an operator-provided close price. The close layer is
+documented in full by
+[`docs/shadow-trial-close.md`](shadow-trial-close.md). The
+summary below is the contract view; the linked document
+is authoritative.
+
+This layer:
+
+- does not approve new market data sources
+- does not perform network I/O
+- must read only local shadow trial ledgers
+- must require an operator-provided `close_price`
+- must not fetch or infer the close price
+- may compute `price_delta_points`
+- may compute `directional_delta_points`
+- must set `executable=false`
+- must not place, route, simulate, or transmit orders
+- must not connect to a broker
+- must not read credentials
+- must not maintain cash balance or virtual position state
+- must not calculate or claim PnL, win rate, risk-adjusted,
+  forward return, or profit
+- must not be treated as paper trading or live trading
+- must not add a default live pipeline
+- must not commit raw FRED CSV to `exports/`, `fixtures/`,
+  or `reports/`
