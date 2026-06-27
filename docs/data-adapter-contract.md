@@ -464,3 +464,25 @@ to a `preferred` or `acceptable` outcome:
 - no raw index data may be committed or exported
 - no broker, auth, cookie, or paid source may be introduced
   as a SOX / semiconductor source
+
+## 8.6 Adapter composition
+
+`ComposedMarketContextAdapter` composes approved
+`MarketContextAdapter` instances into one final validated
+`MarketContext`. The composition layer is documented in full by
+[`docs/adapter-composition.md`](adapter-composition.md). The
+summary below is the contract view; the linked document is
+authoritative.
+
+This composition layer:
+
+- does not approve new sources
+- does not perform network I/O by itself
+- may only compose already-approved adapters
+- must not include a SOX adapter until §8.5 is updated
+- must not introduce broker / auth / cookie / paid source paths
+- must re-validate the final `MarketContext`
+- must not add a default live production pipeline
+- must stop at the first failure, wrapping the original
+  exception in `AdapterCompositionError` with stage-name
+  (construction failure) or session-date (load failure) metadata
