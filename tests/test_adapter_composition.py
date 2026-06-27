@@ -19,7 +19,10 @@ Coverage:
 * Load failure is wrapped in ``AdapterCompositionError`` with the
   session date.
 * No live network is used in tests.
-* No subprocess is used.
+* **No subprocess is used in tests.** Subprocess safety is
+  enforced by pure static AST checks against the production
+  and script sources, not by runtime ``mock.patch``. This keeps
+  the test file subprocess-free end to end.
 * No environment credential reads.
 * No broker / order / account symbols appear.
 * The SOX / semiconductor source-selection contract (per
@@ -35,8 +38,6 @@ Coverage:
 from __future__ import annotations
 
 import ast
-import socket
-import subprocess
 import unittest
 from dataclasses import replace
 from pathlib import Path
@@ -444,50 +445,97 @@ class ComposeHelperTests(unittest.TestCase):
         self.assertEqual(adapter.stages[0].name, "noop")
 
 
-# --- Network safety -----------------------------------------------------
+# --- Network / subprocess safety (static AST) ----------------------------
+
+
+def _module_has_subprocess_use(py_path: Path) -> bool:
+    """Return True if the Python source at ``py_path`` imports
+    the ``subprocess`` module or accesses any
+    ``subprocess.<attr>`` attribute. Static check; no execution.
+    """
+    tree = ast.parse(
+        py_path.read_text(encoding="utf-8"), filename=str(py_path)
+    )
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name.split(".")[0] == "subprocess":
+                    return True
+        elif isinstance(node, ast.ImportFrom):
+            if node.module and node.module.split(".")[0] == "subprocess":
+                return True
+        elif isinstance(node, ast.Attribute) and isinstance(
+            node.value, ast.Name
+        ):
+            if node.value.id == "subprocess":
+                return True
+    return False
+
+
+def _module_has_os_env_credential_read(py_path: Path) -> bool:
+    """Return True if the Python source at ``py_path`` calls
+    ``os.environ.get`` / ``os.getenv`` (i.e. environment
+    credential reads). Static check; no execution.
+    """
+    tree = ast.parse(
+        py_path.read_text(encoding="utf-8"), filename=str(py_path)
+    )
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Attribute):
+            continue
+        # os.environ.get
+        if (
+            isinstance(node.value, ast.Attribute)
+            and isinstance(node.value.value, ast.Name)
+            and node.value.value.id == "os"
+            and node.value.attr == "environ"
+            and node.attr == "get"
+        ):
+            return True
+        # os.getenv
+        if (
+            isinstance(node.value, ast.Name)
+            and node.value.id == "os"
+            and node.attr == "getenv"
+        ):
+            return True
+    return False
 
 
 class CompositionNetworkSafetyTests(unittest.TestCase):
-    """Enforce that nms/data/composition.py does not perform
-    network I/O, subprocess calls, or env-credential reads.
+    """Enforce that nms/data/composition.py and
+    scripts/compose_market_context.py do not import subprocess,
+    do not access subprocess.<attr>, and do not read
+    environment credentials. All checks are static AST checks,
+    not runtime mocks. This keeps the test file subprocess-free
+    end to end.
     """
 
-    def test_no_socket_call(self) -> None:
-        with mock.patch("socket.socket") as mocked_socket, mock.patch(
-            "socket.create_connection"
-        ) as mocked_connect:
-            composed = ComposedMarketContextAdapter(
-                base_adapter=_make_stub_base_adapter(),
-                stages=[],
-            )
-            composed.load("2026-06-24")
-            mocked_socket.assert_not_called()
-            mocked_connect.assert_not_called()
+    def test_composition_module_has_no_subprocess_import_or_call(
+        self,
+    ) -> None:
+        self.assertFalse(
+            _module_has_subprocess_use(COMPOSITION_PATH),
+            f"{COMPOSITION_PATH} imports or accesses subprocess.",
+        )
 
-    def test_no_subprocess_call(self) -> None:
-        with mock.patch("subprocess.Popen") as mocked_popen, mock.patch(
-            "subprocess.run"
-        ) as mocked_run, mock.patch("subprocess.call") as mocked_call:
-            composed = ComposedMarketContextAdapter(
-                base_adapter=_make_stub_base_adapter(),
-                stages=[],
-            )
-            composed.load("2026-06-24")
-            mocked_popen.assert_not_called()
-            mocked_run.assert_not_called()
-            mocked_call.assert_not_called()
+    def test_dry_run_python_has_no_subprocess_import_or_call(self) -> None:
+        self.assertFalse(
+            _module_has_subprocess_use(DRY_RUN_PY),
+            f"{DRY_RUN_PY} imports or accesses subprocess.",
+        )
 
-    def test_no_env_credential_reads(self) -> None:
-        with mock.patch("os.environ.get") as mocked_get, mock.patch(
-            "os.getenv"
-        ) as mocked_getenv:
-            composed = ComposedMarketContextAdapter(
-                base_adapter=_make_stub_base_adapter(),
-                stages=[],
-            )
-            composed.load("2026-06-24")
-            mocked_get.assert_not_called()
-            mocked_getenv.assert_not_called()
+    def test_composition_module_has_no_env_credential_reads(self) -> None:
+        self.assertFalse(
+            _module_has_os_env_credential_read(COMPOSITION_PATH),
+            f"{COMPOSITION_PATH} reads environment credentials.",
+        )
+
+    def test_dry_run_python_has_no_env_credential_reads(self) -> None:
+        self.assertFalse(
+            _module_has_os_env_credential_read(DRY_RUN_PY),
+            f"{DRY_RUN_PY} reads environment credentials.",
+        )
 
     def _collect_imports(self, py_path: Path) -> set[str]:
         with py_path.open("r", encoding="utf-8") as fh:
