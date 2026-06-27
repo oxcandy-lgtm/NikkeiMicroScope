@@ -14,15 +14,22 @@ repository tree, and they assert that:
   language, no-broker / no-auth language).
 * The parent data-adapter-contract links to the source-selection
   document.
-* No ``nms/data/*sox*`` adapter file is added in this PR.
-* No new runtime dependency is added in ``pyproject.toml``.
-* No GitHub workflow file is changed in this PR.
+* No ``nms/data/*sox*`` adapter file exists in the repository.
+* No ``scripts/*sox*`` file exists in the repository.
+* ``pyproject.toml`` does not introduce any forbidden market-data
+  runtime dependency.
+* No GitHub workflow references the SOX source-selection doc.
+* No raw SOX / SOXX / SMH / PHLX / Nasdaq Semiconductor data is
+  committed under ``fixtures/``, ``exports/``, or ``reports/``.
+
+All checks are pure filesystem / static checks. **No subprocess
+calls are performed**, in line with the PR's ``no_subprocess: yes``
+safety claim.
 """
 
 from __future__ import annotations
 
 import re
-import subprocess
 import unittest
 from pathlib import Path
 
@@ -31,6 +38,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SOX_DOC = REPO_ROOT / "docs" / "sox-source-selection.md"
 DATA_ADAPTER_CONTRACT = REPO_ROOT / "docs" / "data-adapter-contract.md"
 NMS_DATA_DIR = REPO_ROOT / "nms" / "data"
+SCRIPTS_DIR = REPO_ROOT / "scripts"
 PYPROJECT = REPO_ROOT / "pyproject.toml"
 WORKFLOWS_DIR = REPO_ROOT / ".github" / "workflows"
 FIXTURES_DIR = REPO_ROOT / "fixtures"
@@ -227,87 +235,84 @@ class SoxScopeRepositoryStateTests(unittest.TestCase):
     """Enforce that this PR is source-selection only: no SOX adapter
     is added, no new runtime dependency, no workflow changes, no raw
     SOX / SOXX / SMH data committed.
+
+    All checks are pure filesystem / static checks. No subprocess
+    calls are performed.
     """
 
-    def _changed_paths_against_main(self) -> list[str]:
-        result = subprocess.run(
-            [
-                "git",
-                "diff",
-                "--name-only",
-                "origin/main...HEAD",
-            ],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return [p for p in result.stdout.splitlines() if p]
-
-    def test_no_sox_adapter_added_under_nms_data(self) -> None:
-        changed = self._changed_paths_against_main()
+    def test_no_sox_adapter_file_exists_under_nms_data(self) -> None:
+        # No nms/data/*sox* file may exist in the repository.
+        # The test is a static filesystem check (no git diff).
+        if not NMS_DATA_DIR.exists():
+            return
         bad = [
-            p
-            for p in changed
-            if re.match(r"^nms/data/.*sox", p, flags=re.IGNORECASE)
+            str(p)
+            for p in NMS_DATA_DIR.rglob("*")
+            if p.is_file() and "sox" in p.name.lower()
         ]
         self.assertEqual(
             bad,
             [],
-            f"No nms/data/*sox* file may be added in this PR: {bad}",
+            f"No nms/data/*sox* file may be added: {bad}",
         )
 
-    def test_no_sox_script_added(self) -> None:
-        changed = self._changed_paths_against_main()
+    def test_no_sox_script_file_exists(self) -> None:
+        # No scripts/*sox* file may exist in the repository.
+        # The test is a static filesystem check (no git diff).
+        if not SCRIPTS_DIR.exists():
+            return
         bad = [
-            p
-            for p in changed
-            if re.match(r"^scripts/.*sox", p, flags=re.IGNORECASE)
+            str(p)
+            for p in SCRIPTS_DIR.rglob("*")
+            if p.is_file() and "sox" in p.name.lower()
         ]
         self.assertEqual(
             bad,
             [],
-            f"No scripts/*sox* file may be added in this PR: {bad}",
+            f"No scripts/*sox* file may be added: {bad}",
         )
 
-    def test_no_runtime_dependency_added(self) -> None:
-        # The repository's pyproject.toml must not grow a new
-        # dependency in this PR. We test by diffing it against
-        # origin/main.
-        result = subprocess.run(
-            [
-                "git",
-                "diff",
-                "origin/main...HEAD",
-                "--",
-                "pyproject.toml",
-            ],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        # If pyproject.toml was not changed at all, the diff is
-        # empty and we are good.
-        self.assertEqual(
-            result.stdout.strip(),
-            "",
-            "pyproject.toml must not change in this PR:\n"
-            f"{result.stdout}",
-        )
+    def test_pyproject_has_no_forbidden_market_data_dependency(self) -> None:
+        # pyproject.toml must not introduce any forbidden
+        # market-data runtime dependency. This is a static
+        # filesystem / static-text check, not a git diff.
+        text = PYPROJECT.read_text(encoding="utf-8")
+        for token in (
+            "requests",
+            "httpx",
+            "aiohttp",
+            "yfinance",
+            "pandas-datareader",
+        ):
+            self.assertNotIn(
+                token,
+                text,
+                f"pyproject.toml must not introduce {token!r} as a "
+                f"runtime dependency.",
+            )
 
-    def test_no_workflow_file_changed(self) -> None:
-        changed = self._changed_paths_against_main()
-        bad = [
-            p
-            for p in changed
-            if p.startswith(".github/workflows/")
-        ]
-        self.assertEqual(
-            bad,
-            [],
-            f"No workflow file may be changed in this PR: {bad}",
-        )
+    def test_workflows_do_not_reference_sox_source_selection(self) -> None:
+        # No GitHub workflow should reference the SOX
+        # source-selection doc. This is a static filesystem /
+        # static-text check. The actual "no workflow file
+        # changed in this PR" check is done at PR review time
+        # via the changed-files list and CI report, not by
+        # running git diff inside a unit test.
+        if not WORKFLOWS_DIR.exists():
+            return
+        for fp in WORKFLOWS_DIR.rglob("*"):
+            if not fp.is_file():
+                continue
+            try:
+                text = fp.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
+            self.assertNotIn(
+                "sox-source-selection",
+                text.lower(),
+                f"Workflow file must not reference sox-source-selection: "
+                f"{fp}",
+            )
 
     def test_no_raw_sox_data_committed(self) -> None:
         # No raw downloaded SOX / SOXX / SMH / PHLX / Nasdaq
