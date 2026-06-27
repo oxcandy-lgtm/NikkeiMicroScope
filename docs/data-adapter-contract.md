@@ -486,3 +486,29 @@ This composition layer:
 - must stop at the first failure, wrapping the original
   exception in `AdapterCompositionError` with stage-name
   (construction failure) or session-date (load failure) metadata
+
+## 8.7 Composed MarketContext JSON export
+
+`nms.data.export` may serialize a validated `MarketContext`
+into deterministic JSON. The export layer is documented in
+full by [`docs/market-context-export.md`](market-context-export.md).
+The summary below is the contract view; the linked document
+is authoritative.
+
+This export layer:
+
+- does not approve new sources
+- does not perform network I/O
+- must re-validate before writing
+- must write deterministic UTF-8 JSON
+  (`ensure_ascii=False`, `indent=2`, `sort_keys=True`,
+  trailing newline)
+- must refuse overwrite by default
+- must not include a SOX adapter until §8.5 is updated
+- must not introduce broker / auth / cookie / paid source
+  paths
+- must not be treated as backtest, paper trading, or live
+  trading
+- must not add a default live pipeline
+- must not commit raw FRED CSV to `exports/`, `fixtures/`,
+  or `reports/`
