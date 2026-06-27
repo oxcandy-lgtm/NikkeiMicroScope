@@ -512,3 +512,31 @@ This export layer:
 - must not add a default live pipeline
 - must not commit raw FRED CSV to `exports/`, `fixtures/`,
   or `reports/`
+
+## 8.8 MarketContext artifact validation report
+
+`nms.data.artifact_report` may read an exported
+`MarketContext` JSON artifact and produce a deterministic
+read-only validation report. The report layer is documented
+in full by
+[`docs/market-context-artifact-report.md`](market-context-artifact-report.md).
+The summary below is the contract view; the linked document
+is authoritative.
+
+This report layer:
+
+- does not approve new sources
+- does not perform network I/O
+- must not widen the `MarketContext` schema
+- may strip allowed artifact metadata
+  (`synthetic`, `_dry_run_meta`) before schema validation
+- must report populated approved fields
+- must report SOX / unapproved fields as unapproved, not
+  missing bugs
+- must not include broker / auth / cookie / paid source
+  paths
+- must not be treated as score, signal, backtest, paper
+  trading, or live trading
+- must not add a default live pipeline
+- must not commit raw FRED CSV to `exports/`, `fixtures/`,
+  or `reports/`
