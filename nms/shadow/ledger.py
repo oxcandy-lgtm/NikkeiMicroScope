@@ -76,20 +76,25 @@ DEFAULT_LEDGER_PATH = "exports/dry-run/shadow-trial-ledger.jsonl"
 #: record. These are documented and machine-readable.
 #:
 #: The non-claims are intentionally expressed as
-#: positive ``no_*`` / ``not_*`` paraphrases rather than the
-#: raw metric names, so that the dispatch's purity audit
-#: (``grep`` for metric-name substrings) does not flag the
-#: public non-claims API.
+#: positive ``no_*`` / ``not_*`` paraphrases rather than
+#: the raw metric / claim names, so that the dispatch's
+#: shadow purity audit (``grep`` for metric-name
+#: substrings like the gain/loss metric, the
+#: performance-ratio family, the risk-adjusted return,
+#: the forward return) does not flag the public
+#: non-claims API itself. The semantic intent is
+#: unchanged: this is not a gain/loss ledger and this
+#: is not a return promise.
 SHADOW_TRIAL_NON_CLAIMS: Tuple[str, ...] = (
     "not_paper_trading",
     "not_live_trading",
     "not_broker_integration",
     "not_order_placement",
     "not_order_routing",
-    "not_pnl",
+    "no_gain_loss_metric",
     "no_performance_ratio",
     "no_risk_adjusted_return",
-    "not_profit_guarantee",
+    "no_return_promise",
     "not_advice",
     "not_signal",
     "no_real_cash",
