@@ -33,6 +33,12 @@ from nms.data.adapters import (
     FixtureMarketContextAdapter,
     MarketContextAdapter,
 )
+from nms.data.composition import (
+    AdapterCompositionError,
+    AdapterStage,
+    ComposedMarketContextAdapter,
+    compose_market_context_adapter,
+)
 from nms.data.fred_treasury import FredTreasuryOverlayAdapter
 from nms.data.fred_sp500 import (
     FredSP500AdapterError,
@@ -59,6 +65,9 @@ from nms.data.public_sources import (
 from nms.data.validate import ValidationError, validate_market_context
 
 __all__ = [
+    "AdapterCompositionError",
+    "AdapterStage",
+    "ComposedMarketContextAdapter",
     "EconomicEventRisk",
     "EventItem",
     "FixtureMarketContextAdapter",
@@ -88,5 +97,6 @@ __all__ = [
     "VolatilityContext",
     "_parse_fred_csv",
     "_parse_fred_csv_with_previous",
+    "compose_market_context_adapter",
     "validate_market_context",
 ]
