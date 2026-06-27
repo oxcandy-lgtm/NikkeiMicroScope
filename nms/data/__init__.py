@@ -39,6 +39,11 @@ from nms.data.composition import (
     ComposedMarketContextAdapter,
     compose_market_context_adapter,
 )
+from nms.data.export import (
+    market_context_to_json_text,
+    market_context_to_ordered_dict,
+    write_market_context_json,
+)
 from nms.data.fred_treasury import FredTreasuryOverlayAdapter
 from nms.data.fred_sp500 import (
     FredSP500AdapterError,
@@ -98,5 +103,8 @@ __all__ = [
     "_parse_fred_csv",
     "_parse_fred_csv_with_previous",
     "compose_market_context_adapter",
+    "market_context_to_json_text",
+    "market_context_to_ordered_dict",
     "validate_market_context",
+    "write_market_context_json",
 ]
