@@ -421,6 +421,164 @@ class SOXHandlingTests(unittest.TestCase):
             self.assertTrue(report.ok)
 
 
+# --- Strict type checks on synthetic / _dry_run_meta --------------------
+
+
+class SyntheticMetadataStrictTypeTests(unittest.TestCase):
+    """The dispatch defines `synthetic` as a boolean and
+    `_dry_run_meta` as an object. The validator must reject
+    truthy non-boolean values (e.g. the string "yes", the
+    integer 1, a non-empty list) and non-object values
+    (e.g. a string or a list) for `_dry_run_meta`.
+    """
+
+    def test_synthetic_string_true_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "art.json"
+            payload = _minimal_market_context_dict()
+            payload["synthetic"] = "true"  # string, not bool
+            _write_json(p, payload)
+            report = build_market_context_artifact_report(p)
+            # A truthy non-boolean synthetic must not be
+            # treated as synthetic.
+            self.assertFalse(report.synthetic)
+            self.assertFalse(report.ok)
+            self.assertTrue(
+                any(
+                    "'synthetic' must be boolean" in err
+                    for err in report.errors
+                ),
+                f"expected boolean error; got {report.errors!r}",
+            )
+
+    def test_synthetic_integer_one_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "art.json"
+            payload = _minimal_market_context_dict()
+            payload["synthetic"] = 1  # int, not bool
+            _write_json(p, payload)
+            report = build_market_context_artifact_report(p)
+            self.assertFalse(report.synthetic)
+            self.assertFalse(report.ok)
+            self.assertTrue(
+                any(
+                    "'synthetic' must be boolean" in err
+                    for err in report.errors
+                ),
+                f"expected boolean error; got {report.errors!r}",
+            )
+
+    def test_synthetic_non_empty_list_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "art.json"
+            payload = _minimal_market_context_dict()
+            payload["synthetic"] = ["truthy"]  # list, not bool
+            _write_json(p, payload)
+            report = build_market_context_artifact_report(p)
+            self.assertFalse(report.synthetic)
+            self.assertFalse(report.ok)
+            self.assertTrue(
+                any(
+                    "'synthetic' must be boolean" in err
+                    for err in report.errors
+                ),
+                f"expected boolean error; got {report.errors!r}",
+            )
+
+    def test_dry_run_meta_non_object_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "art.json"
+            payload = _minimal_market_context_dict()
+            payload["_dry_run_meta"] = "not a dict"  # str
+            _write_json(p, payload)
+            report = build_market_context_artifact_report(p)
+            self.assertFalse(report.dry_run_meta_present)
+            self.assertFalse(report.ok)
+            self.assertTrue(
+                any(
+                    "'_dry_run_meta' must be an object" in err
+                    for err in report.errors
+                ),
+                f"expected object error; got {report.errors!r}",
+            )
+
+    def test_dry_run_meta_list_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "art.json"
+            payload = _minimal_market_context_dict()
+            payload["_dry_run_meta"] = [1, 2, 3]  # list
+            _write_json(p, payload)
+            report = build_market_context_artifact_report(p)
+            self.assertFalse(report.dry_run_meta_present)
+            self.assertFalse(report.ok)
+            self.assertTrue(
+                any(
+                    "'_dry_run_meta' must be an object" in err
+                    for err in report.errors
+                ),
+                f"expected object error; got {report.errors!r}",
+            )
+
+    def test_expect_synthetic_rejects_truthy_non_boolean_synthetic(
+        self,
+    ) -> None:
+        # A truthy non-boolean `synthetic` is not the
+        # strict-boolean True. With expect_synthetic=True
+        # the validator must reject it.
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "art.json"
+            payload = _minimal_market_context_dict()
+            payload["synthetic"] = "yes"  # truthy non-bool
+            payload["_dry_run_meta"] = {
+                "source": "nms.data.export dry-run",
+                "session_date": "2026-06-24",
+                "live_fred_used": False,
+            }
+            _write_json(p, payload)
+            report = build_market_context_artifact_report(
+                p, expect_synthetic=True
+            )
+            self.assertFalse(report.synthetic)
+            self.assertFalse(report.ok)
+            self.assertTrue(
+                any(
+                    "'synthetic' must be boolean" in err
+                    for err in report.errors
+                ),
+                f"expected boolean error; got {report.errors!r}",
+            )
+
+    def test_expect_synthetic_rejects_truthy_live_fred_used(self) -> None:
+        # Truthy non-boolean live_fred_used is not the
+        # strict-boolean False. With expect_synthetic=True
+        # the validator must reject it.
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "art.json"
+            payload = _minimal_market_context_dict()
+            payload["synthetic"] = True
+            payload["_dry_run_meta"] = {
+                "source": "nms.data.export dry-run",
+                "session_date": "2026-06-24",
+                # 0 is "falsy" in Python, but it is not the
+                # boolean False. Strict-type check rejects it.
+                "live_fred_used": 0,
+            }
+            _write_json(p, payload)
+            report = build_market_context_artifact_report(
+                p, expect_synthetic=True
+            )
+            self.assertFalse(report.ok)
+            self.assertTrue(
+                any(
+                    "live_fred_used" in err
+                    and "boolean" in err
+                    for err in report.errors
+                ),
+                f"expected boolean live_fred_used error; "
+                f"got {report.errors!r}",
+            )
+
+
 # --- expect_synthetic behavior ------------------------------------------
 
 

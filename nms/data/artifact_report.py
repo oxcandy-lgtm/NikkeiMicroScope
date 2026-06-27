@@ -302,10 +302,25 @@ def build_market_context_artifact_report(
             errors=(f"failed to load artifact: {e}",),
         )
 
-    # 2. Detect the synthetic marker.
+    # 2. Detect the synthetic marker with strict type
+    #    checking. The dispatch defines `synthetic` as a
+    #    boolean; we reject any truthy non-boolean value
+    #    (e.g. the string "yes", the integer 1, a non-empty
+    #    list) so that callers cannot accidentally opt in
+    #    to the synthetic-approved-dry-run code path with
+    #    an unexpected type.
+    synthetic_key_present = "synthetic" in payload
     synthetic_raw = payload.get("synthetic", False)
-    synthetic = bool(synthetic_raw) is True
+    if synthetic_key_present and not isinstance(synthetic_raw, bool):
+        errors.append("'synthetic' must be boolean true/false")
+        synthetic = False
+    else:
+        synthetic = synthetic_raw is True
+
     dry_run_meta = payload.get("_dry_run_meta")
+    dry_run_meta_key_present = "_dry_run_meta" in payload
+    if dry_run_meta_key_present and not isinstance(dry_run_meta, dict):
+        errors.append("'_dry_run_meta' must be an object")
     dry_run_meta_present = isinstance(dry_run_meta, dict)
     session_date = str(payload.get("session_date", ""))
 
@@ -355,16 +370,29 @@ def build_market_context_artifact_report(
         if not dry_run_meta_present:
             errors.append(
                 "expect_synthetic=True but '_dry_run_meta' is "
-                "missing"
+                "missing or is not an object"
             )
         elif isinstance(dry_run_meta, dict):
-            live_fred_used = dry_run_meta.get("live_fred_used", None)
-            if live_fred_used is not False:
+            if "live_fred_used" not in dry_run_meta:
                 errors.append(
-                    f"expect_synthetic=True but "
-                    f"_dry_run_meta.live_fred_used is "
-                    f"{live_fred_used!r} (expected False)"
+                    "expect_synthetic=True but "
+                    "_dry_run_meta.live_fred_used is missing"
                 )
+            else:
+                live_fred_used = dry_run_meta["live_fred_used"]
+                if not isinstance(live_fred_used, bool):
+                    errors.append(
+                        "expect_synthetic=True but "
+                        f"_dry_run_meta.live_fred_used is "
+                        f"{live_fred_used!r} "
+                        "(must be boolean true/false)"
+                    )
+                elif live_fred_used is not False:
+                    errors.append(
+                        "expect_synthetic=True but "
+                        f"_dry_run_meta.live_fred_used is "
+                        f"{live_fred_used!r} (expected False)"
+                    )
 
     # 7. For SOX (an unapproved source), require zero in any
     #    synthetic approved dry-run artifact. In a non-synthetic
