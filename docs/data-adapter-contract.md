@@ -540,3 +540,29 @@ This report layer:
 - must not add a default live pipeline
 - must not commit raw FRED CSV to `exports/`, `fixtures/`,
   or `reports/`
+
+## 8.9 Shadow trial ledger
+
+`nms.shadow.ledger` may create local, append-only, no-cash
+shadow trial records from validated `MarketContext`
+artifacts. The ledger is documented in full by
+[`docs/shadow-trial-ledger.md`](shadow-trial-ledger.md). The
+summary below is the contract view; the linked document is
+authoritative.
+
+This layer:
+
+- does not approve new market data sources
+- does not perform network I/O
+- must validate the artifact before creating a record
+- may use the existing pure scoring engine for context
+- must set `executable=false`
+- must not place, route, simulate, or transmit orders
+- must not connect to a broker
+- must not read credentials
+- must not calculate PnL, win rate, risk-adjusted, or
+  forward-return
+- must not be treated as paper trading or live trading
+- must not add a default live pipeline
+- must not commit raw FRED CSV to `exports/`, `fixtures/`,
+  or `reports/`
