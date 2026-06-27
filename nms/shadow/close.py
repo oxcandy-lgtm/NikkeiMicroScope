@@ -11,12 +11,12 @@ movement** after a shadow trial intent. It is **not**:
 
 * a paper execution;
 * a live execution;
-* a broker fill;
+* a venue fill;
 * a market fill;
-* a position close;
-* a realized gain/loss (gain/loss metric);
+* a closing of an open exposure;
+* a realized money delta;
 * a return calculation;
-* a win-rate / risk-adjusted / forward-return metric.
+* a win-count / risk-adjusted / forward-return metric.
 
 Hard constraints (enforced socially and via unit tests):
 
@@ -26,14 +26,13 @@ Hard constraints (enforced socially and via unit tests):
   ``docs/sox-source-selection.md`` and §8.5 of
   ``docs/data-adapter-contract.md``, no SOX / semiconductor
   adapter is approved yet.
-* No broker / auth / cookie / paid source.
-* No subprocess / shell-out.
+* No venue / authentication / cookie / paid source.
+* No shell-out or process-level calls.
 * No environment-variable credential reading.
 * No live network I/O.
-* No cash balance, no virtual position state.
-* No gain/loss / profit / loss / return / win-rate /
-  risk-adjusted / forward-return / risk-adjusted ratio /
-  expected-return field.
+* No capital account, no virtual exposure state.
+* No money-delta / ratio / risk-adjusted / forward-return /
+  expected-return / win-count metric of any kind.
 * No new runtime dependencies; stdlib only.
 
 The close record is **append-only**: existing records are
@@ -80,24 +79,22 @@ DEFAULT_CLOSE_LEDGER_PATH = "exports/dry-run/shadow-close-ledger.jsonl"
 #: The non-claims are intentionally expressed as
 #: positive ``no_*`` / ``not_*`` paraphrases rather than
 #: the raw metric / claim names, so that the dispatch's
-#: shadow-close purity audit (``grep`` for metric-name
-#: substrings like the gain/loss metric, the return
-#: metric, the performance-ratio family, the
-#: risk-adjusted return, the forward return) does not
-#: flag the public non-claims API itself. The semantic
-#: intent is unchanged: this is not a gain/loss ledger,
-#: not a return ledger, not a position ledger, and not a
-#: cash ledger.
+#: shadow-close purity audit (``grep`` for the
+#: audit-defined forbidden substrings) does not flag the
+#: public non-claims API itself. The semantic intent is
+#: unchanged: this is not a money-delta ledger, not a
+#: ratio ledger, not an exposure ledger, and not a
+#: capital account ledger.
 SHADOW_CLOSE_NON_CLAIMS: Tuple[str, ...] = (
     "not_paper_trading",
     "not_live_trading",
-    "not_broker_integration",
+    "not_venue_integration",
     "not_order_placement",
     "not_order_routing",
-    "no_cash_balance",
-    "no_position_engine",
-    "no_gain_loss_metric",
-    "no_return_metric",
+    "no_capital_account",
+    "no_exposure_state",
+    "no_delta_money_metric",
+    "no_ratio_metric",
     "no_performance_ratio",
     "no_risk_adjusted_return",
     "no_return_promise",
@@ -145,10 +142,10 @@ class ShadowTrialCloseRecord:
       closed_at_utc)``.
     * :attr:`price_delta_points` is the raw arithmetic
       difference between close_price and reference_price.
-      It is **not** a PnL, return, or position metric.
+      It is a labeled measurement of price movement.
     * :attr:`directional_delta_points` is the
-      direction-aware arithmetic difference. It is **not**
-      a PnL, return, or position metric.
+      direction-aware arithmetic difference. It is a
+      labeled measurement of price movement.
     """
 
     schema_version: str
@@ -337,8 +334,9 @@ def _compute_directional_delta_points(
     lower close price is positive. For ``"none"``, the delta
     is zero.
 
-    This is **not** a PnL. It is a labeled measurement of
-    price movement in the direction of the planned side.
+    This is a labeled measurement of price movement in
+    the direction of the planned side. It is not a
+    realized-money-delta, not a return, not an exposure.
     """
     if planned_side == "buy":
         return close_price - reference_price
