@@ -442,3 +442,25 @@ returns a new one with the two `us_equities` fields replaced. The
   The adapter is for operator-side observation only; downstream
   redistribution of raw NASDAQ100 observations is out of scope
   and requires operator/legal review.
+
+## 8.5 Future SOX / semiconductor source selection
+
+No SOX adapter is approved yet.
+
+The source-selection contract lives in
+[`docs/sox-source-selection.md`](sox-source-selection.md). The
+contract evaluates at least one exact-index candidate and the two
+obvious ETF proxies (`SOXX`, `SMH`), and records the current
+decision. The current decision is
+`defer_adapter` — no reviewed public no-auth exact SOX source has
+been confirmed yet.
+
+Until a future PR updates §8.5 and the source-selection document
+to a `preferred` or `acceptable` outcome:
+
+- no adapter may write `semiconductor.sox`
+- no adapter may write `semiconductor.sox_change_pct`
+- no ETF proxy may be labeled as exact SOX
+- no raw index data may be committed or exported
+- no broker, auth, cookie, or paid source may be introduced
+  as a SOX / semiconductor source
