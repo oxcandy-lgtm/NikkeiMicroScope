@@ -33,6 +33,14 @@ from nms.data.adapters import (
     FixtureMarketContextAdapter,
     MarketContextAdapter,
 )
+from nms.data.artifact_report import (
+    ArtifactFieldStatus,
+    MarketContextArtifactReport,
+    build_market_context_artifact_report,
+    load_market_context_artifact,
+    report_to_json_text,
+    report_to_ordered_dict,
+)
 from nms.data.composition import (
     AdapterCompositionError,
     AdapterStage,
@@ -72,6 +80,7 @@ from nms.data.validate import ValidationError, validate_market_context
 __all__ = [
     "AdapterCompositionError",
     "AdapterStage",
+    "ArtifactFieldStatus",
     "ComposedMarketContextAdapter",
     "EconomicEventRisk",
     "EventItem",
@@ -93,6 +102,7 @@ __all__ = [
     "IntradayRange",
     "MarketContext",
     "MarketContextAdapter",
+    "MarketContextArtifactReport",
     "NikkeiNightSession",
     "PreviousDay",
     "Semiconductor",
@@ -102,9 +112,13 @@ __all__ = [
     "VolatilityContext",
     "_parse_fred_csv",
     "_parse_fred_csv_with_previous",
+    "build_market_context_artifact_report",
     "compose_market_context_adapter",
+    "load_market_context_artifact",
     "market_context_to_json_text",
     "market_context_to_ordered_dict",
+    "report_to_json_text",
+    "report_to_ordered_dict",
     "validate_market_context",
     "write_market_context_json",
 ]

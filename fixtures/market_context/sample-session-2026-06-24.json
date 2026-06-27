@@ -10,8 +10,8 @@
     "nasdaq100_change_pct": 0.72
   },
   "semiconductor": {
-    "sox": 5550.0,
-    "sox_change_pct": 1.10
+    "sox": 0.0,
+    "sox_change_pct": 0.0
   },
   "fx": {
     "usdjpy": 159.70,
@@ -24,11 +24,11 @@
     "us10y_change_bp": 3.5
   },
   "nikkei_night_session": {
-    "close": 40125.5,
-    "high": 40180.0,
-    "low": 40020.0,
-    "range": 160.0,
-    "percent_change": 0.18
+    "close": 0.0,
+    "high": 0.0,
+    "low": 0.0,
+    "range": 0.0,
+    "percent_change": 0.0
   },
   "previous_day": {
     "high": 40210.0,
