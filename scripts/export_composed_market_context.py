@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Composed MarketContext JSON export dry-run script.
 
-Exercises ``write_market_context_json`` end-to-end with mocked
-``http_get`` for all four FRED overlay adapters. No real network
-access. No environment variable reads. No subprocess calls. No
-raw FRED data committed in this script — the CSVs below are small
-synthetic examples with low-magnitude placeholder values.
+Exercises the export serialization path with
+``market_context_to_ordered_dict`` plus a synthetic marker
+payload, using mocked ``http_get`` for all four FRED overlay
+adapters. No real network access. No environment variable
+reads. No subprocess calls. No raw FRED data committed in
+this script — the CSVs below are small synthetic examples
+with low-magnitude placeholder values.
 
 The dry-run:
 
@@ -13,12 +15,21 @@ The dry-run:
    ``scripts/compose_market_context.py``).
 2. Loads the final composed ``MarketContext`` for
    ``2026-06-24``.
-3. Writes the final context to
-   ``exports/dry-run/composed-market-context-2026-06-24.json``.
-4. Refuses to overwrite an existing file unless
+3. Serializes the context via
+   ``market_context_to_ordered_dict`` (re-validating the
+   input), then adds a top-level ``"synthetic"`` marker and
+   a ``"_dry_run_meta"`` block to the payload. The result is
+   written directly with ``json.dumps`` because the synthetic
+   marker is not a ``MarketContext`` schema field and
+   ``write_market_context_json`` (which is covered by unit
+   tests) only writes a validated ``MarketContext`` payload.
+4. Writes the marked payload to
+   ``exports/dry-run/composed-market-context-2026-06-24.json``
+   by default, or to a custom path via ``--output``.
+5. Refuses to overwrite an existing file unless
    ``--overwrite`` is passed.
-5. Prints the output path and a short summary.
-6. Exits nonzero on failure.
+6. Prints the output path and a short summary.
+7. Exits nonzero on failure.
 
 The exported JSON includes a top-level ``"synthetic"`` marker
 and a ``"_dry_run_meta"`` block so it is never confused with
@@ -40,11 +51,7 @@ from nms.data.composition import (
     AdapterStage,
     compose_market_context_adapter,
 )
-from nms.data.export import (
-    market_context_to_json_text,
-    market_context_to_ordered_dict,
-    write_market_context_json,
-)
+from nms.data.export import market_context_to_ordered_dict
 from nms.data.fred_nasdaq100 import (
     FredNASDAQ100OverlayAdapter,
     FredNASDAQ100SourceConfig,

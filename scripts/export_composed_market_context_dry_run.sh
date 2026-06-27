@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
 # Composed MarketContext JSON export dry-run script.
 #
-# Exercises write_market_context_json end-to-end with mocked
-# http_get for all four FRED overlay adapters. No real network
-# access. No environment variable reads. No subprocess calls.
-# No raw FRED data is committed in this script — the CSVs
-# inside are small synthetic examples with placeholder values.
+# Exercises the export serialization path with
+# market_context_to_ordered_dict plus a synthetic marker
+# payload, using mocked http_get for all four FRED overlay
+# adapters. No real network access. No environment variable
+# reads. No subprocess calls. No raw FRED data is committed in
+# this script — the CSVs inside are small synthetic examples
+# with placeholder values.
+#
+# The synthetic marker is not a MarketContext schema field,
+# so the Python script writes the marked payload directly
+# with json.dumps rather than through
+# write_market_context_json. write_market_context_json is
+# covered by unit tests in tests/test_market_context_export.py
+# and writes a validated MarketContext payload without
+# artifact-level metadata.
 #
 # The Python script writes to a temporary directory so this
 # wrapper does not leave committed artifacts behind unless
