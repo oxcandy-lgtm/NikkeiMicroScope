@@ -11,12 +11,13 @@ context. All outputs are advisory.
 
 ## Status
 
-- **Stage:** bootstrap (docs-only)
+- **Stage:** active research scaffold (advisory / no-execution)
 - **CCL Tier:** 2 (Satellite-first Project Repo)
 - **Repo mode:** `dry_run`
 - **Live trading:** disabled
 - **Broker integration:** disabled
 - **Source of truth for generated exports:** false (advisory only)
+- **Shadow replay:** local counts/status-only manifest; not historical simulation, not paper trading, not live trading.
 
 ## Scope
 
@@ -85,6 +86,20 @@ All Satellite updates are advisory. `repo_mode` is `dry_run` and
 `source_of_truth` is `false` for generated exports. There is no auto-apply
 and no recurring sync pressure beyond explicit workflow / manual runs.
 
+### Parent CCL load note — 2026-06-28
+
+Latest observed parent CCL state during the 2026-06-28 load pass includes:
+
+- PR #278 — advisory CCL rule tag index.
+- PR #279 — authority-escalation guard.
+- PR #280 — operator-preauthorized draft-to-merge lifecycle connector.
+
+No full parent CCL tree is copied into NMS. No Product-SQR Full child rollout is
+applied here by default. Any future parent-to-NMS propagation must remain a
+separate, reviewed PR and must preserve NMS hard non-goals: no GitHub Issues,
+no PAT, no secrets, no broker credentials, no live order placement, no
+auto-execution, and no project-owned path mutation outside explicit scope.
+
 ## Repository Layout
 
 ```
@@ -111,17 +126,18 @@ and no recurring sync pressure beyond explicit workflow / manual runs.
 |   |   |-- constants.py
 |   |   |-- scoring.py
 |   |   `-- classification.py
-|   `-- data/                         # Read-only data layer
-|       |-- __init__.py
-|       |-- models.py
-|       |-- adapters.py
-|       |-- fixture_loader.py
-|       |-- validate.py
-    |       |-- public_sources.py          # Shared FRED parsing helpers
-    |       |-- fred_treasury.py           # FRED DGS2/DGS10 adapter
-    |       |-- fred_sp500.py              # FRED SP500 adapter
-    |       |-- fred_usdjpy.py             # FRED DEXJPUS adapter
-    |       `-- fred_nasdaq100.py          # FRED NASDAQ100 adapter
+|   |-- data/                         # Read-only data layer
+|   |   |-- __init__.py
+|   |   |-- models.py
+|   |   |-- adapters.py
+|   |   |-- fixture_loader.py
+|   |   |-- validate.py
+|   |   |-- public_sources.py             # Shared FRED parsing helpers
+|   |   |-- fred_treasury.py              # FRED DGS2/DGS10 adapter
+|   |   |-- fred_sp500.py                 # FRED SP500 adapter
+|   |   |-- fred_usdjpy.py                # FRED DEXJPUS adapter
+|   |   `-- fred_nasdaq100.py             # FRED NASDAQ100 adapter
+|   `-- shadow/                       # Local counts/status-only shadow records
 |-- tests/                            # stdlib unittest suite
 |-- fixtures/                         # Local sample fixtures (no network)
 |   `-- market_context/
@@ -130,6 +146,8 @@ and no recurring sync pressure beyond explicit workflow / manual runs.
 |   `-- satellite-update-plan.json
 |-- scripts/
 |   |-- satellite-update-dry-run.sh
+|   |-- run_shadow_replay.py
+|   |-- run_shadow_replay_dry_run.sh
 |   `-- validate-fixtures.sh
 |-- pyproject.toml
 |-- Makefile

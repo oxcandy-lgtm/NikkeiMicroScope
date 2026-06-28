@@ -1,6 +1,6 @@
 {
   "pack_id": "nikkei-microscope-satellite",
-  "pack_version": "0.1.0",
+  "pack_version": "0.1.1",
   "project": {
     "name": "NikkeiMicroScope",
     "short_name": "NMS",
@@ -11,7 +11,19 @@
     "mode": "satellite-first",
     "parent_pack_id": null,
     "is_full_ccl_instance": false,
-    "copies_parent_tree": false
+    "copies_parent_tree": false,
+    "latest_observed_parent": {
+      "repo": "oxcandy-lgtm/CCL",
+      "observed_at_utc": "2026-06-28T07:57:18Z",
+      "merge_commit_sha": "6b11ae8fbea823ffc632357de20d12cb02b17ac6",
+      "latest_pr": 280,
+      "update_required": "no_full_tree_copy",
+      "notes": [
+        "Parent PR #278 rule index is advisory-only and does not require an NMS copy.",
+        "Parent PR #279 authority guard informs review posture; NMS ccl-lite remains read-only.",
+        "Parent PR #280 lifecycle connector applies to Sai/operator flow only when explicitly preauthorized."
+      ]
+    }
   },
   "repo_mode": "dry_run",
   "source_of_truth": false,
@@ -45,11 +57,12 @@
     "dry_run_required": true,
     "entry_point": "scripts/satellite-update-dry-run.sh"
   },
-  "bootstrap": {
-    "stage": "bootstrap",
-    "pr_title": "Bootstrap CCL Tier 2 Satellite project",
-    "pr_mode": "draft",
-    "branch": "codex/bootstrap-ccl-tier2-satellite",
-    "base_branch": "main"
+  "lifecycle": {
+    "stage": "active_research_scaffold",
+    "latest_merged_pr": 17,
+    "latest_merged_pr_title": "Add shadow replay manifest",
+    "latest_merged_pr_merge_commit_sha": "93647c22b6de4857297d33a2ecdbad3e10f1f4db",
+    "bootstrap_pr_title": "Bootstrap CCL Tier 2 Satellite project",
+    "bootstrap_branch": "codex/bootstrap-ccl-tier2-satellite"
   }
 }

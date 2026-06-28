@@ -66,6 +66,7 @@ HEALTH_JSON="$(cat <<EOF
   "ccl_tier": 2,
   "ccl_mode": "satellite-first",
   "repo_mode": "dry_run",
+  "stage": "active_research_scaffold",
   "source_of_truth": false,
   "advisory_only": true,
   "branch": "${BRANCH}",
@@ -79,7 +80,9 @@ HEALTH_JSON="$(cat <<EOF
     "secrets_absent": true,
     "issues_api_absent": true,
     "pat_absent": true,
-    "live_trading_absent": true
+    "live_trading_absent": true,
+    "broker_integration_absent": true,
+    "auto_execution_absent": true
   },
   "managed_paths": [
     "satellite-pack.json",
@@ -98,7 +101,9 @@ HEALTH_JSON="$(cat <<EOF
   ],
   "notes": [
     "Advisory only. Source of truth is the PR, not this file.",
-    "Dry run. No remote mutations performed."
+    "Dry run. No remote mutations performed.",
+    "NMS is active research scaffold, not docs-only bootstrap.",
+    "Parent CCL updates are not copied into NMS unless separately chartered."
   ]
 }
 EOF
@@ -118,25 +123,32 @@ PLAN_JSON="$(cat <<EOF
   "ccl_tier": 2,
   "ccl_mode": "satellite-first",
   "repo_mode": "dry_run",
+  "stage": "active_research_scaffold",
   "source_of_truth": false,
   "advisory_only": true,
   "auto_apply": false,
   "branch": "${BRANCH}",
   "head_sha": "${HEAD_SHA}",
-  "plan_kind": "no_change",
-  "rationale": "Bootstrap PR. Satellite surfaces are present and consistent; no parent update is pending or requested.",
+  "plan_kind": "no_parent_copy_required",
+  "rationale": "Satellite surfaces are present and consistent. Latest observed parent CCL changes are advisory for NMS unless a separate propagation PR is explicitly chartered.",
   "candidate_actions": [
     {
       "id": "verify-managed-paths",
-      "type": "exact_fix_only",
+      "type": "proof_followup_only",
       "summary": "Verify that all files listed in managed_paths exist and are well-formed.",
       "must_not_do": ["mutate project_owned_paths"]
     },
     {
-      "id": "no-auto-apply",
+      "id": "keep-satellite-dry-run",
       "type": "proof_followup_only",
       "summary": "Confirm that no workflow or hook will auto-apply this plan.",
       "must_not_do": ["trigger_github_actions_auto_apply"]
+    },
+    {
+      "id": "charter-parent-propagation-before-copy",
+      "type": "feature_work_after_review",
+      "summary": "Open a separate reviewed PR before copying any parent CCL Product-SQR or directive bundle into NMS.",
+      "must_not_do": ["copy_full_parent_ccl_tree", "mutate_child_docs_by_default"]
     }
   ],
   "forbidden_actions": [
@@ -145,7 +157,8 @@ PLAN_JSON="$(cat <<EOF
     "use_pat",
     "load_dotenv",
     "place_order",
-    "access_broker_api"
+    "access_broker_api",
+    "copy_full_parent_ccl_tree"
   ],
   "next_review": "on_next_pr"
 }

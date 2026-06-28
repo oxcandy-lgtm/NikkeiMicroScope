@@ -1,31 +1,38 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-06-24T13:21:58Z",
-  "generated_at_jst": "2026-06-24T22:21:58+0900",
+  "generated_at_utc": "2026-06-28T07:57:18Z",
+  "generated_at_jst": "2026-06-28T16:57:18+0900",
   "project": "NikkeiMicroScope",
   "short_name": "NMS",
   "ccl_tier": 2,
   "ccl_mode": "satellite-first",
   "repo_mode": "dry_run",
+  "stage": "active_research_scaffold",
   "source_of_truth": false,
   "advisory_only": true,
   "auto_apply": false,
-  "branch": "codex/regen-satellite-exports",
-  "head_sha": "d9a093d732ef5b63ba94354e08a17f12a3837bff",
-  "plan_kind": "no_change",
-  "rationale": "Bootstrap PR. Satellite surfaces are present and consistent; no parent update is pending or requested.",
+  "branch": "codex/refresh-nms-satellite-status-after-ccl-load",
+  "head_sha": "pending_pr_branch_commit",
+  "plan_kind": "no_parent_copy_required",
+  "rationale": "Satellite surfaces are present and consistent. Latest observed parent CCL changes are advisory for NMS unless a separate propagation PR is explicitly chartered.",
   "candidate_actions": [
     {
       "id": "verify-managed-paths",
-      "type": "exact_fix_only",
+      "type": "proof_followup_only",
       "summary": "Verify that all files listed in managed_paths exist and are well-formed.",
       "must_not_do": ["mutate project_owned_paths"]
     },
     {
-      "id": "no-auto-apply",
+      "id": "keep-satellite-dry-run",
       "type": "proof_followup_only",
       "summary": "Confirm that no workflow or hook will auto-apply this plan.",
       "must_not_do": ["trigger_github_actions_auto_apply"]
+    },
+    {
+      "id": "charter-parent-propagation-before-copy",
+      "type": "feature_work_after_review",
+      "summary": "Open a separate reviewed PR before copying any parent CCL Product-SQR or directive bundle into NMS.",
+      "must_not_do": ["copy_full_parent_ccl_tree", "mutate_child_docs_by_default"]
     }
   ],
   "forbidden_actions": [
@@ -34,7 +41,8 @@
     "use_pat",
     "load_dotenv",
     "place_order",
-    "access_broker_api"
+    "access_broker_api",
+    "copy_full_parent_ccl_tree"
   ],
   "next_review": "on_next_pr"
 }
