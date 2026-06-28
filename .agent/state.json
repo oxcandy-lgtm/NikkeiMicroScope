@@ -5,7 +5,7 @@
   "ccl_tier": 2,
   "ccl_mode": "satellite-first",
   "repo_mode": "dry_run",
-  "stage": "bootstrap",
+  "stage": "active_research_scaffold",
   "live_trading": false,
   "broker_integration": false,
   "auto_execution": false,
@@ -14,7 +14,7 @@
   "uses_pat": false,
   "has_secrets": false,
   "branch": {
-    "current": "codex/bootstrap-ccl-tier2-satellite",
+    "current": "main",
     "base": "main",
     "direct_push_to_base": false
   },
@@ -37,6 +37,20 @@
     "exports/satellite-health.json",
     "exports/satellite-update-plan.json"
   ],
+  "latest_observed_parent_ccl": {
+    "repo": "oxcandy-lgtm/CCL",
+    "observed_at_utc": "2026-06-28T07:57:18Z",
+    "merge_commit_sha": "6b11ae8fbea823ffc632357de20d12cb02b17ac6",
+    "latest_pr": 280,
+    "propagation_required": false,
+    "reason": "NMS is Tier 2 satellite-first; parent CCL changes are reviewed as advisory unless a separate NMS propagation PR is chartered."
+  },
+  "latest_project_checkpoint": {
+    "latest_merged_pr": 17,
+    "latest_merged_pr_title": "Add shadow replay manifest",
+    "merge_commit_sha": "93647c22b6de4857297d33a2ecdbad3e10f1f4db",
+    "scope": "counts/status-only shadow replay manifest; no cash, no broker, no execution, no scored-result metrics"
+  },
   "bootstrap_metadata": {
     "bootstrap_pr_title": "Bootstrap CCL Tier 2 Satellite project",
     "bootstrap_pr_mode": "draft",
@@ -44,9 +58,10 @@
     "bootstrap_base_branch": "main"
   },
   "notes": [
-    "Honest minimal state for a docs-only bootstrap.",
+    "NMS is past docs-only bootstrap and is now an active advisory research scaffold.",
     "All advisory exports are non-canonical.",
-    "Live trading and broker integration are explicitly disabled.",
-    "No GitHub Issues, no PAT, no secrets."
+    "Live trading and broker integration remain explicitly disabled.",
+    "No GitHub Issues, no PAT, no secrets.",
+    "Parent CCL load on 2026-06-28 did not require copying the full parent tree into NMS."
   ]
 }
