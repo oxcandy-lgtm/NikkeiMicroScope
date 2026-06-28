@@ -17,8 +17,8 @@ and, for each row:
 
 The replay records only counts and per-row statuses. It
 does **not** compute or report aggregate money deltas,
-performance ratios, win rates, returns, or any other
-performance metric.
+ratio outputs, win-count outputs, forward outcome
+claims, or any scored-result metric.
 
 Hard constraints (enforced socially and via unit tests):
 
@@ -33,12 +33,12 @@ Hard constraints (enforced socially and via unit tests):
 * No environment-variable credential reading.
 * No live network I/O.
 * No capital account, no virtual exposure state.
-* No money-delta / ratio / risk-adjusted / forward-return /
-  expected-return / win-count / equity-curve / portfolio /
-  strategy-performance metric of any kind.
+* No money-delta / ratio output / forward outcome /
+  win-count / exposure-collection / strategy-outcome
+  metric of any kind.
 * No new runtime dependencies; stdlib only.
 * No aggregate delta / average delta / total delta /
-  score average / win-loss count.
+  score average.
 
 The replay is **append-only**: existing trial and close
 records are never overwritten, deleted, or truncated.
@@ -175,9 +175,8 @@ class ShadowReplayResultManifest:
     """The result manifest of a shadow replay run.
 
     The manifest records counts and per-row statuses. It
-    does not include aggregate money deltas, performance
-    ratios, win rates, returns, or any other performance
-    metric.
+    does not include aggregate money deltas, ratio outputs,
+    win-count outputs, or any scored-result metric.
     """
 
     schema_version: str
@@ -442,8 +441,8 @@ def run_shadow_replay_manifest(
 
     The result manifest records counts and per-row
     statuses. It does not include aggregate money deltas,
-    performance ratios, win rates, returns, or any other
-    performance metric.
+    ratio outputs, win-count outputs, or any scored-result
+    metric.
     """
     input_manifest_path = Path(input_manifest_path)
     if (
