@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   validate:
-    name: Validate bootstrap artifacts
+    name: Validate bootstrap and shadow integrity artifacts
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -87,3 +87,12 @@ jobs:
             exit 1
           fi
           echo "No forbidden surface detected."
+
+      - name: Compile NMS Python surfaces
+        run: python3 -m compileall -q nms scripts tests
+
+      - name: Run shadow replay integrity unit tests
+        run: python3 -m unittest tests.test_shadow_replay_integrity
+
+      - name: Run shadow replay integrity dry run
+        run: bash scripts/run_shadow_replay_integrity_dry_run.sh
