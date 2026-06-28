@@ -1,16 +1,17 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-06-24T13:21:58Z",
-  "generated_at_jst": "2026-06-24T22:21:58+0900",
+  "generated_at_utc": "2026-06-28T07:57:18Z",
+  "generated_at_jst": "2026-06-28T16:57:18+0900",
   "project": "NikkeiMicroScope",
   "short_name": "NMS",
   "ccl_tier": 2,
   "ccl_mode": "satellite-first",
   "repo_mode": "dry_run",
+  "stage": "active_research_scaffold",
   "source_of_truth": false,
   "advisory_only": true,
-  "branch": "codex/regen-satellite-exports",
-  "head_sha": "d9a093d732ef5b63ba94354e08a17f12a3837bff",
+  "branch": "codex/refresh-nms-satellite-status-after-ccl-load",
+  "head_sha": "pending_pr_branch_commit",
   "clean_tree": true,
   "checks": {
     "satellite_pack_present": true,
@@ -20,7 +21,15 @@
     "secrets_absent": true,
     "issues_api_absent": true,
     "pat_absent": true,
-    "live_trading_absent": true
+    "live_trading_absent": true,
+    "broker_integration_absent": true,
+    "auto_execution_absent": true
+  },
+  "latest_observed_parent_ccl": {
+    "repo": "oxcandy-lgtm/CCL",
+    "merge_commit_sha": "6b11ae8fbea823ffc632357de20d12cb02b17ac6",
+    "latest_pr": 280,
+    "propagation_required": false
   },
   "managed_paths": [
     "satellite-pack.json",
@@ -39,6 +48,8 @@
   ],
   "notes": [
     "Advisory only. Source of truth is the PR, not this file.",
-    "Dry run. No remote mutations performed."
+    "Dry run. No remote mutations performed.",
+    "NMS is active research scaffold, not docs-only bootstrap.",
+    "Parent CCL updates are not copied into NMS unless separately chartered."
   ]
 }
