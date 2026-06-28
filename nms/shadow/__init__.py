@@ -1,6 +1,6 @@
-"""Shadow trial ledger and close package.
+"""Shadow trial ledger, close, and replay package.
 
-This package provides two layers:
+This package provides three layers:
 
 * :mod:`nms.shadow.ledger` — the **first step** toward
   no-cash test trading. It records deterministic,
@@ -10,15 +10,25 @@ This package provides two layers:
   records a separate, local-only close record from an
   existing shadow trial record plus an operator-provided
   ``close_price``.
+* :mod:`nms.shadow.replay` — the **third step**. It runs
+  a local append-only replay over a manifest of
+  ``MarketContext`` artifacts and operator-provided
+  inputs. It records counts and per-row statuses only. It
+  is not a backtest.
 
-Neither layer is paper trading. Neither is live trading.
-Neither is broker integration. Neither is order placement
-or order routing. Neither is PnL / win rate / risk-adjusted /
-forward return / Sharpe / expected return / profit.
+None of these layers is paper trading. None is live
+trading. None is venue integration. None is order
+placement or order routing. None is money-delta / ratio
+/ risk-adjusted / forward-return / expected-return /
+win-count / equity-curve / portfolio / strategy-
+performance. None maintains a capital account or virtual
+exposure state.
 
-See :mod:`nms.shadow.ledger` and :mod:`nms.shadow.close` for
-the implementations and :doc:`docs/shadow-trial-ledger` and
-:doc:`docs/shadow-trial-close` for the contracts.
+See :mod:`nms.shadow.ledger`, :mod:`nms.shadow.close`, and
+:mod:`nms.shadow.replay` for the implementations and
+:doc:`docs/shadow-trial-ledger`,
+:doc:`docs/shadow-trial-close`, and
+:doc:`docs/shadow-replay-manifest` for the contracts.
 """
 
 from __future__ import annotations
@@ -50,17 +60,44 @@ from nms.shadow.ledger import (
     shadow_trial_record_to_ordered_dict,
     sha256_file,
 )
+from nms.shadow.replay import (
+    ROW_STATUS_CLOSE_CREATED,
+    ROW_STATUS_ROW_ERROR,
+    ROW_STATUS_TRIAL_CREATED,
+    SHADOW_REPLAY_INPUT_SCHEMA_VERSION,
+    SHADOW_REPLAY_NON_CLAIMS,
+    SHADOW_REPLAY_RESULT_SCHEMA_VERSION,
+    ShadowReplayError,
+    ShadowReplayResultManifest,
+    ShadowReplayRow,
+    ShadowReplayRowResult,
+    load_shadow_replay_input_manifest,
+    run_shadow_replay_manifest,
+    shadow_replay_result_to_json_text,
+    shadow_replay_result_to_ordered_dict,
+    write_shadow_replay_result_json,
+)
 
 
 __all__ = [
     "DEFAULT_CLOSE_LEDGER_PATH",
     "DEFAULT_LEDGER_PATH",
+    "ROW_STATUS_CLOSE_CREATED",
+    "ROW_STATUS_ROW_ERROR",
+    "ROW_STATUS_TRIAL_CREATED",
     "SHADOW_CLOSE_NON_CLAIMS",
     "SHADOW_CLOSE_NOT_EXECUTABLE",
     "SHADOW_CLOSE_SCHEMA_VERSION",
+    "SHADOW_REPLAY_INPUT_SCHEMA_VERSION",
+    "SHADOW_REPLAY_NON_CLAIMS",
+    "SHADOW_REPLAY_RESULT_SCHEMA_VERSION",
     "SHADOW_TRIAL_NON_CLAIMS",
     "SHADOW_TRIAL_NOT_EXECUTABLE",
     "SHADOW_TRIAL_SCHEMA_VERSION",
+    "ShadowReplayError",
+    "ShadowReplayResultManifest",
+    "ShadowReplayRow",
+    "ShadowReplayRowResult",
     "ShadowTrialCloseError",
     "ShadowTrialCloseRecord",
     "ShadowTrialLedgerError",
@@ -71,9 +108,14 @@ __all__ = [
     "build_shadow_trial_close_record",
     "build_shadow_trial_record",
     "load_market_context_from_artifact_for_shadow_trial",
+    "load_shadow_replay_input_manifest",
+    "run_shadow_replay_manifest",
+    "shadow_replay_result_to_json_text",
+    "shadow_replay_result_to_ordered_dict",
     "shadow_trial_close_record_to_json_text",
     "shadow_trial_close_record_to_ordered_dict",
     "shadow_trial_record_to_json_text",
     "shadow_trial_record_to_ordered_dict",
     "sha256_file",
+    "write_shadow_replay_result_json",
 ]

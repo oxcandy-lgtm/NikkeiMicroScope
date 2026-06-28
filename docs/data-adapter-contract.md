@@ -597,3 +597,34 @@ This layer:
 - must not add a default live pipeline
 - must not commit raw FRED CSV to `exports/`, `fixtures/`,
   or `reports/`
+
+## 8.11 Shadow replay manifest
+
+`nms.shadow.replay` may run a local append-only replay
+over exported `MarketContext` artifacts and
+operator-provided close prices. The replay layer is
+documented in full by
+[`docs/shadow-replay-manifest.md`](shadow-replay-manifest.md).
+The summary below is the contract view; the linked
+document is authoritative.
+
+This layer:
+
+- does not approve new market data sources
+- does not perform network I/O
+- must read only local input manifests and local artifacts
+- may create local shadow trial records
+- may create local explicit close-price shadow close records
+- must not fetch or infer close prices
+- must not place, route, simulate, or transmit orders
+- must not connect to a broker or venue
+- must not read credentials
+- must not maintain cash balance or virtual position state
+- must not calculate or claim PnL, win rate, Sharpe,
+  expected return, profit, or strategy performance
+- must not output aggregate money/performance metrics
+- must not be treated as backtest, paper trading, or live
+  trading
+- must not add a default live pipeline
+- must not commit raw FRED CSV to `exports/`, `fixtures/`,
+  or `reports/`
