@@ -58,9 +58,9 @@ charter-gated work.
 | Name | Value | Meaning |
 | --- | --- | --- |
 | `FIXED_CONTRACT_COUNT` | `1` | The fixed contract count for every paper-trading refinement session. Cannot be changed. Enforces "flat fixed contract count" and "no martingale / no leverage escalation" by construction. |
-| `MAX_SESSION_DRAWDOWN_JPY` | `100_000` | Maximum cumulative simulated drawdown allowed per session, in JPY. |
-| `MAX_DAILY_DRAWDOWN_JPY` | `300_000` | Maximum cumulative simulated drawdown allowed per day (`day_key`), in JPY. |
-| `MAX_WEEKLY_DRAWDOWN_JPY` | `1_000_000` | Maximum cumulative simulated drawdown allowed per ISO week (`week_key`, `YYYY-Www`), in JPY. |
+| `MAX_SESSION_DRAWDOWN_JPY` | `5_000` | Maximum cumulative simulated drawdown allowed per session, in JPY. At the cap exactly trips. |
+| `MAX_DAILY_DRAWDOWN_JPY` | `10_000` | Maximum cumulative simulated drawdown allowed per day (`day_key`), in JPY. At the cap exactly trips. |
+| `MAX_WEEKLY_DRAWDOWN_JPY` | `30_000` | Maximum cumulative simulated drawdown allowed per ISO week (`week_key`, `YYYY-Www`), in JPY. At the cap exactly trips. |
 | `PAPER_GATE_SCHEMA_VERSION` | `"paper-gate/1"` | Schema version of the gate state and decision. Bumped on breaking changes. |
 | `PAPER_GATE_NON_CLAIMS` | `Tuple[str, ...]` | Audit-safe non-claim strings for the gate layer. See "Non-claims" below. |
 | `HALT_SCOPE_SESSION` | `"session"` | Halt scope constant for the session gate. |
@@ -144,13 +144,13 @@ A zero delta is a no-op: the state is unchanged.
 ### Gate trip
 
 A gate trips when the new realized drawdown for its
-scope strictly exceeds the cap:
+scope reaches the cap:
 
 ```text
-trip if new_realized > cap
+trip if new_realized >= cap
 ```
 
-At the cap exactly is allowed. One over the cap trips.
+At the cap exactly trips. One below the cap is allowed.
 
 ### Already-halted behavior
 
@@ -167,7 +167,7 @@ determines the decision's `halt_scope` and
 scopes are updated atomically (in the same `state_after`)
 before the first-scope check.
 
-The session cap (100k JPY) is the tightest. Any event
+The session cap (5k JPY) is the tightest. Any event
 that trips the daily or weekly cap also trips the
 session cap. In a single-event scenario, the session
 gate always trips first. The daily and weekly caps

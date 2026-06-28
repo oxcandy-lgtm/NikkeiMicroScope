@@ -135,13 +135,13 @@ class ConstantsTests(unittest.TestCase):
         self.assertEqual(FIXED_CONTRACT_COUNT, 1)
 
     def test_max_session_drawdown_jpy_value(self) -> None:
-        self.assertEqual(MAX_SESSION_DRAWDOWN_JPY, 100_000)
+        self.assertEqual(MAX_SESSION_DRAWDOWN_JPY, 5_000)
 
     def test_max_daily_drawdown_jpy_value(self) -> None:
-        self.assertEqual(MAX_DAILY_DRAWDOWN_JPY, 300_000)
+        self.assertEqual(MAX_DAILY_DRAWDOWN_JPY, 10_000)
 
     def test_max_weekly_drawdown_jpy_value(self) -> None:
-        self.assertEqual(MAX_WEEKLY_DRAWDOWN_JPY, 1_000_000)
+        self.assertEqual(MAX_WEEKLY_DRAWDOWN_JPY, 30_000)
 
     def test_session_cap_is_tightest(self) -> None:
         # The session cap is the tightest, so any event
@@ -237,21 +237,21 @@ class InitialStateTests(unittest.TestCase):
 
 class FormatHaltReasonTests(unittest.TestCase):
     def test_format_session_halt(self) -> None:
-        text = format_halt_reason("session", 100_000, 120_000)
+        text = format_halt_reason("session", 5_000, 6_000)
         self.assertIn("session", text)
-        self.assertIn("120000", text)
-        self.assertIn("100000", text)
+        self.assertIn("6000", text)
+        self.assertIn("5000", text)
 
     def test_format_daily_halt(self) -> None:
-        text = format_halt_reason("daily", 300_000, 350_000)
+        text = format_halt_reason("daily", 10_000, 12_000)
         self.assertIn("daily", text)
 
     def test_format_weekly_halt(self) -> None:
-        text = format_halt_reason("weekly", 1_000_000, 1_100_000)
+        text = format_halt_reason("weekly", 30_000, 35_000)
         self.assertIn("weekly", text)
 
     def test_format_already_halted(self) -> None:
-        text = format_halt_reason("already_halted", 100_000, 100_000)
+        text = format_halt_reason("already_halted", 5_000, 5_000)
         self.assertIn("already_halted", text)
 
     def test_format_rejects_unknown_scope(self) -> None:
@@ -267,41 +267,48 @@ class FormatHaltReasonTests(unittest.TestCase):
             format_halt_reason("session", 100, "100")  # type: ignore[arg-type]
 
     def test_format_deterministic(self) -> None:
-        a = format_halt_reason("session", 100_000, 120_000)
-        b = format_halt_reason("session", 100_000, 120_000)
+        a = format_halt_reason("session", 5_000, 6_000)
+        b = format_halt_reason("session", 5_000, 6_000)
         self.assertEqual(a, b)
 
 
 class SessionGateTests(unittest.TestCase):
     def test_within_cap_allowed(self) -> None:
         state = _initial_state()
-        d = evaluate_session_gate(state, -40_000)
+        d = evaluate_session_gate(state, -2_000)
         self.assertTrue(d.allowed)
         self.assertIsNone(d.halt_reason)
         self.assertIsNone(d.halt_scope)
-        self.assertEqual(d.state_after.session_realized_jpy, 40_000)
+        self.assertEqual(d.state_after.session_realized_jpy, 2_000)
 
-    def test_exactly_at_cap_allowed(self) -> None:
+    def test_one_below_cap_allowed(self) -> None:
         state = _initial_state()
-        d = evaluate_session_gate(state, -100_000)
+        d = evaluate_session_gate(state, -4_999)
         self.assertTrue(d.allowed)
-        self.assertEqual(d.state_after.session_realized_jpy, 100_000)
+        self.assertEqual(d.state_after.session_realized_jpy, 4_999)
+
+    def test_exactly_at_cap_trips(self) -> None:
+        state = _initial_state()
+        d = evaluate_session_gate(state, -5_000)
+        self.assertFalse(d.allowed)
+        self.assertEqual(d.halt_scope, HALT_SCOPE_SESSION)
+        self.assertTrue(d.state_after.session_halted)
 
     def test_one_over_cap_trips(self) -> None:
         state = _initial_state()
-        d = evaluate_session_gate(state, -100_001)
+        d = evaluate_session_gate(state, -5_001)
         self.assertFalse(d.allowed)
         self.assertEqual(d.halt_scope, HALT_SCOPE_SESSION)
         self.assertTrue(d.state_after.session_halted)
 
     def test_gain_does_not_offset_drawdown(self) -> None:
         state = _initial_state()
-        d1 = evaluate_session_gate(state, -40_000)
+        d1 = evaluate_session_gate(state, -2_000)
         self.assertTrue(d1.allowed)
-        d2 = evaluate_session_gate(d1.state_after, 1_000_000)
+        d2 = evaluate_session_gate(d1.state_after, 100_000)
         self.assertTrue(d2.allowed)
         # Realized drawdown is unchanged: gains do not offset.
-        self.assertEqual(d2.state_after.session_realized_jpy, 40_000)
+        self.assertEqual(d2.state_after.session_realized_jpy, 2_000)
 
     def test_zero_delta_noop(self) -> None:
         state = _initial_state()
@@ -311,9 +318,9 @@ class SessionGateTests(unittest.TestCase):
 
     def test_halted_session_rejects_subsequent(self) -> None:
         state = _initial_state()
-        d1 = evaluate_session_gate(state, -120_000)
+        d1 = evaluate_session_gate(state, -5_000)
         self.assertFalse(d1.allowed)
-        d2 = evaluate_session_gate(d1.state_after, -10_000)
+        d2 = evaluate_session_gate(d1.state_after, -1_000)
         self.assertFalse(d2.allowed)
         self.assertEqual(d2.halt_scope, HALT_SCOPE_ALREADY_HALTED)
         # State is unchanged on already-halted evaluation.
@@ -321,7 +328,7 @@ class SessionGateTests(unittest.TestCase):
 
     def test_individual_session_does_not_update_day_or_week(self) -> None:
         state = _initial_state()
-        d = evaluate_session_gate(state, -40_000)
+        d = evaluate_session_gate(state, -2_000)
         self.assertEqual(d.state_after.day_realized_jpy, 0)
         self.assertEqual(d.state_after.week_realized_jpy, 0)
 
@@ -340,75 +347,107 @@ class SessionGateTests(unittest.TestCase):
 class DailyGateTests(unittest.TestCase):
     def test_within_cap_allowed(self) -> None:
         state = _initial_state()
-        d = evaluate_daily_gate(state, -200_000)
+        d = evaluate_daily_gate(state, -5_000)
         self.assertTrue(d.allowed)
-        self.assertEqual(d.state_after.day_realized_jpy, 200_000)
+        self.assertEqual(d.state_after.day_realized_jpy, 5_000)
 
-    def test_exceeds_cap_trips(self) -> None:
+    def test_one_below_cap_allowed(self) -> None:
         state = _initial_state()
-        d = evaluate_daily_gate(state, -350_000)
+        d = evaluate_daily_gate(state, -9_999)
+        self.assertTrue(d.allowed)
+        self.assertEqual(d.state_after.day_realized_jpy, 9_999)
+
+    def test_exactly_at_cap_trips(self) -> None:
+        state = _initial_state()
+        d = evaluate_daily_gate(state, -10_000)
+        self.assertFalse(d.allowed)
+        self.assertEqual(d.halt_scope, HALT_SCOPE_DAILY)
+        self.assertTrue(d.state_after.day_halted)
+
+    def test_one_over_cap_trips(self) -> None:
+        state = _initial_state()
+        d = evaluate_daily_gate(state, -10_001)
         self.assertFalse(d.allowed)
         self.assertEqual(d.halt_scope, HALT_SCOPE_DAILY)
         self.assertTrue(d.state_after.day_halted)
 
     def test_individual_daily_does_not_update_session_or_week(self) -> None:
         state = _initial_state()
-        d = evaluate_daily_gate(state, -200_000)
+        d = evaluate_daily_gate(state, -5_000)
         self.assertEqual(d.state_after.session_realized_jpy, 0)
         self.assertEqual(d.state_after.week_realized_jpy, 0)
 
     def test_halted_daily_rejects_subsequent(self) -> None:
         state = _initial_state()
-        d1 = evaluate_daily_gate(state, -350_000)
-        d2 = evaluate_daily_gate(d1.state_after, -10_000)
+        d1 = evaluate_daily_gate(state, -10_000)
+        d2 = evaluate_daily_gate(d1.state_after, -1_000)
         self.assertEqual(d2.halt_scope, HALT_SCOPE_ALREADY_HALTED)
 
 
 class WeeklyGateTests(unittest.TestCase):
     def test_within_cap_allowed(self) -> None:
         state = _initial_state()
-        d = evaluate_weekly_gate(state, -500_000)
+        d = evaluate_weekly_gate(state, -10_000)
         self.assertTrue(d.allowed)
-        self.assertEqual(d.state_after.week_realized_jpy, 500_000)
+        self.assertEqual(d.state_after.week_realized_jpy, 10_000)
 
-    def test_exceeds_cap_trips(self) -> None:
+    def test_one_below_cap_allowed(self) -> None:
         state = _initial_state()
-        d = evaluate_weekly_gate(state, -1_100_000)
+        d = evaluate_weekly_gate(state, -29_999)
+        self.assertTrue(d.allowed)
+        self.assertEqual(d.state_after.week_realized_jpy, 29_999)
+
+    def test_exactly_at_cap_trips(self) -> None:
+        state = _initial_state()
+        d = evaluate_weekly_gate(state, -30_000)
+        self.assertFalse(d.allowed)
+        self.assertEqual(d.halt_scope, HALT_SCOPE_WEEKLY)
+        self.assertTrue(d.state_after.week_halted)
+
+    def test_one_over_cap_trips(self) -> None:
+        state = _initial_state()
+        d = evaluate_weekly_gate(state, -30_001)
         self.assertFalse(d.allowed)
         self.assertEqual(d.halt_scope, HALT_SCOPE_WEEKLY)
         self.assertTrue(d.state_after.week_halted)
 
     def test_individual_weekly_does_not_update_session_or_day(self) -> None:
         state = _initial_state()
-        d = evaluate_weekly_gate(state, -500_000)
+        d = evaluate_weekly_gate(state, -10_000)
         self.assertEqual(d.state_after.session_realized_jpy, 0)
         self.assertEqual(d.state_after.day_realized_jpy, 0)
 
     def test_halted_weekly_rejects_subsequent(self) -> None:
         state = _initial_state()
-        d1 = evaluate_weekly_gate(state, -1_100_000)
-        d2 = evaluate_weekly_gate(d1.state_after, -10_000)
+        d1 = evaluate_weekly_gate(state, -30_000)
+        d2 = evaluate_weekly_gate(d1.state_after, -1_000)
         self.assertEqual(d2.halt_scope, HALT_SCOPE_ALREADY_HALTED)
 
 
 class CompositeGateTests(unittest.TestCase):
     def test_within_all_caps_allowed(self) -> None:
         state = _initial_state()
-        d = evaluate_all_gates(state, -50_000)
+        d = evaluate_all_gates(state, -2_000)
         self.assertTrue(d.allowed)
-        self.assertEqual(d.state_after.session_realized_jpy, 50_000)
-        self.assertEqual(d.state_after.day_realized_jpy, 50_000)
-        self.assertEqual(d.state_after.week_realized_jpy, 50_000)
+        self.assertEqual(d.state_after.session_realized_jpy, 2_000)
+        self.assertEqual(d.state_after.day_realized_jpy, 2_000)
+        self.assertEqual(d.state_after.week_realized_jpy, 2_000)
+
+    def test_one_below_session_cap_allowed_in_composite(self) -> None:
+        state = _initial_state()
+        d = evaluate_all_gates(state, -4_999)
+        self.assertTrue(d.allowed)
+        self.assertEqual(d.state_after.session_realized_jpy, 4_999)
 
     def test_session_cap_trips_first(self) -> None:
         state = _initial_state()
-        d = evaluate_all_gates(state, -120_000)
+        d = evaluate_all_gates(state, -5_000)
         self.assertFalse(d.allowed)
         self.assertEqual(d.halt_scope, HALT_SCOPE_SESSION)
         # All three realized counters are updated atomically.
-        self.assertEqual(d.state_after.session_realized_jpy, 120_000)
-        self.assertEqual(d.state_after.day_realized_jpy, 120_000)
-        self.assertEqual(d.state_after.week_realized_jpy, 120_000)
+        self.assertEqual(d.state_after.session_realized_jpy, 5_000)
+        self.assertEqual(d.state_after.day_realized_jpy, 5_000)
+        self.assertEqual(d.state_after.week_realized_jpy, 5_000)
         self.assertTrue(d.state_after.session_halted)
         # Daily and weekly halted flags are NOT set because
         # session halted first.
@@ -417,8 +456,8 @@ class CompositeGateTests(unittest.TestCase):
 
     def test_halted_session_rejects_subsequent(self) -> None:
         state = _initial_state()
-        d1 = evaluate_all_gates(state, -120_000)
-        d2 = evaluate_all_gates(d1.state_after, -10_000)
+        d1 = evaluate_all_gates(state, -5_000)
+        d2 = evaluate_all_gates(d1.state_after, -1_000)
         self.assertFalse(d2.allowed)
         self.assertEqual(d2.halt_scope, HALT_SCOPE_ALREADY_HALTED)
         self.assertEqual(d2.state_after, d1.state_after)
@@ -445,12 +484,12 @@ class CompositeGateTests(unittest.TestCase):
 
     def test_gain_in_composite_does_not_offset(self) -> None:
         state = _initial_state()
-        d1 = evaluate_all_gates(state, -40_000)
-        d2 = evaluate_all_gates(d1.state_after, 1_000_000)
+        d1 = evaluate_all_gates(state, -2_000)
+        d2 = evaluate_all_gates(d1.state_after, 100_000)
         self.assertTrue(d2.allowed)
-        self.assertEqual(d2.state_after.session_realized_jpy, 40_000)
-        self.assertEqual(d2.state_after.day_realized_jpy, 40_000)
-        self.assertEqual(d2.state_after.week_realized_jpy, 40_000)
+        self.assertEqual(d2.state_after.session_realized_jpy, 2_000)
+        self.assertEqual(d2.state_after.day_realized_jpy, 2_000)
+        self.assertEqual(d2.state_after.week_realized_jpy, 2_000)
 
     def test_composite_rejects_wrong_contract_count(self) -> None:
         from dataclasses import replace
@@ -481,7 +520,7 @@ class DecisionTypeTests(unittest.TestCase):
             state.session_realized_jpy = 999  # type: ignore[misc]
 
     def test_decision_fields(self) -> None:
-        d = evaluate_all_gates(_initial_state(), -120_000)
+        d = evaluate_all_gates(_initial_state(), -5_000)
         self.assertIsInstance(d, PaperGateDecision)
         self.assertFalse(d.allowed)
         self.assertIsNotNone(d.halt_reason)

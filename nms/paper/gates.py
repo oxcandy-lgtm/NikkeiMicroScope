@@ -13,7 +13,8 @@ caps:
 * **weekly** (per ``week_key``, ISO ``YYYY-Www``)
 
 A gate trips when the cumulative simulated drawdown in its
-window exceeds the cap. Once a gate trips, the state is
+window reaches the cap. At the cap exactly trips; one
+below the cap is allowed. Once a gate trips, the state is
 marked halted for that scope, and any further events in that
 scope are rejected.
 
@@ -70,19 +71,19 @@ from typing import Optional, Tuple
 FIXED_CONTRACT_COUNT: int = 1
 
 #: Maximum cumulative simulated drawdown allowed per
-#: session, in JPY. Once exceeded, the session gate
-#: halts. Gains do not offset drawdowns.
-MAX_SESSION_DRAWDOWN_JPY: int = 100_000
+#: session, in JPY. At the cap exactly trips. Gains do
+#: not offset drawdowns.
+MAX_SESSION_DRAWDOWN_JPY: int = 5_000
 
 #: Maximum cumulative simulated drawdown allowed per
-#: day, in JPY. Once exceeded, the daily gate halts.
-#: Gains do not offset drawdowns.
-MAX_DAILY_DRAWDOWN_JPY: int = 300_000
+#: day, in JPY. At the cap exactly trips. Gains do not
+#: offset drawdowns.
+MAX_DAILY_DRAWDOWN_JPY: int = 10_000
 
 #: Maximum cumulative simulated drawdown allowed per
-#: ISO week (``YYYY-Www``), in JPY. Once exceeded, the
-#: weekly gate halts. Gains do not offset drawdowns.
-MAX_WEEKLY_DRAWDOWN_JPY: int = 1_000_000
+#: ISO week (``YYYY-Www``), in JPY. At the cap exactly
+#: trips. Gains do not offset drawdowns.
+MAX_WEEKLY_DRAWDOWN_JPY: int = 30_000
 
 
 #: Schema version of the paper gate state and decision.
@@ -340,7 +341,7 @@ def evaluate_session_gate(
 
     Otherwise, applies the drawdown component of
     ``simulated_delta_jpy`` to the session realized
-    drawdown. If the new realized exceeds
+    drawdown. If the new realized reaches
     :data:`MAX_SESSION_DRAWDOWN_JPY`, returns
     ``allowed=False``,
     ``halt_scope=HALT_SCOPE_SESSION``, and the state with
@@ -368,7 +369,7 @@ def evaluate_session_gate(
         )
     drawdown = _simulated_drawdown_jpy(simulated_delta_jpy)
     new_realized = state.session_realized_jpy + drawdown
-    if new_realized > MAX_SESSION_DRAWDOWN_JPY:
+    if new_realized >= MAX_SESSION_DRAWDOWN_JPY:
         halted_state = replace(
             state,
             session_realized_jpy=new_realized,
@@ -415,7 +416,7 @@ def evaluate_daily_gate(
         )
     drawdown = _simulated_drawdown_jpy(simulated_delta_jpy)
     new_realized = state.day_realized_jpy + drawdown
-    if new_realized > MAX_DAILY_DRAWDOWN_JPY:
+    if new_realized >= MAX_DAILY_DRAWDOWN_JPY:
         halted_state = replace(
             state,
             day_realized_jpy=new_realized,
@@ -463,7 +464,7 @@ def evaluate_weekly_gate(
         )
     drawdown = _simulated_drawdown_jpy(simulated_delta_jpy)
     new_realized = state.week_realized_jpy + drawdown
-    if new_realized > MAX_WEEKLY_DRAWDOWN_JPY:
+    if new_realized >= MAX_WEEKLY_DRAWDOWN_JPY:
         halted_state = replace(
             state,
             week_realized_jpy=new_realized,
@@ -552,7 +553,7 @@ def evaluate_all_gates(
     new_day = state.day_realized_jpy + drawdown
     new_week = state.week_realized_jpy + drawdown
 
-    if new_session > MAX_SESSION_DRAWDOWN_JPY:
+    if new_session >= MAX_SESSION_DRAWDOWN_JPY:
         halted_state = replace(
             state,
             session_realized_jpy=new_session,
@@ -569,7 +570,7 @@ def evaluate_all_gates(
                 new_session,
             ),
         )
-    if new_day > MAX_DAILY_DRAWDOWN_JPY:
+    if new_day >= MAX_DAILY_DRAWDOWN_JPY:
         halted_state = replace(
             state,
             session_realized_jpy=new_session,
@@ -586,7 +587,7 @@ def evaluate_all_gates(
                 new_day,
             ),
         )
-    if new_week > MAX_WEEKLY_DRAWDOWN_JPY:
+    if new_week >= MAX_WEEKLY_DRAWDOWN_JPY:
         halted_state = replace(
             state,
             session_realized_jpy=new_session,
