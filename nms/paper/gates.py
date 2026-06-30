@@ -233,12 +233,47 @@ def _require_int(name: str, value: object) -> None:
         )
 
 
+def _require_bool(name: str, value: object) -> None:
+    if not isinstance(value, bool):
+        raise PaperGateError(
+            f"{name} must be a bool; got {type(value).__name__}"
+        )
+
+
+def _require_non_negative_int(name: str, value: object) -> None:
+    _require_int(name, value)
+    if value < 0:  # type: ignore[operator]
+        raise PaperGateError(f"{name} must be non-negative; got {value!r}")
+
+
 def _require_fixed_contract_count(state: PaperGateState) -> None:
+    _require_int("contract_count", state.contract_count)
     if state.contract_count != FIXED_CONTRACT_COUNT:
         raise PaperGateError(
             f"contract_count must be {FIXED_CONTRACT_COUNT}; "
             f"got {state.contract_count}"
         )
+
+
+def _require_state(state: object) -> PaperGateState:
+    if not isinstance(state, PaperGateState):
+        raise PaperGateError(
+            "state must be PaperGateState; "
+            f"got {type(state).__name__}"
+        )
+    _require_non_empty_str("session_id", state.session_id)
+    _require_non_empty_str("day_key", state.day_key)
+    _require_non_empty_str("week_key", state.week_key)
+    _require_non_negative_int(
+        "session_realized_jpy", state.session_realized_jpy
+    )
+    _require_non_negative_int("day_realized_jpy", state.day_realized_jpy)
+    _require_non_negative_int("week_realized_jpy", state.week_realized_jpy)
+    _require_fixed_contract_count(state)
+    _require_bool("session_halted", state.session_halted)
+    _require_bool("day_halted", state.day_halted)
+    _require_bool("week_halted", state.week_halted)
+    return state
 
 
 def make_initial_paper_gate_state(
@@ -280,15 +315,15 @@ def format_halt_reason(
     Raises:
         PaperGateError: If ``scope`` is not a known halt
             scope, or if ``limit_jpy`` / ``observed_jpy``
-            are not ints.
+            are not non-negative ints.
     """
     if scope not in _ALLOWED_HALT_SCOPES:
         raise PaperGateError(
             f"scope must be one of {sorted(_ALLOWED_HALT_SCOPES)}; "
             f"got {scope!r}"
         )
-    _require_int("limit_jpy", limit_jpy)
-    _require_int("observed_jpy", observed_jpy)
+    _require_non_negative_int("limit_jpy", limit_jpy)
+    _require_non_negative_int("observed_jpy", observed_jpy)
     return (
         f"{scope}_drawdown_cap_tripped: "
         f"observed={observed_jpy}_jpy > limit={limit_jpy}_jpy"
@@ -351,11 +386,10 @@ def evaluate_session_gate(
     with the drawdown applied.
 
     Raises:
-        PaperGateError: If ``state.contract_count`` is not
-            :data:`FIXED_CONTRACT_COUNT`, or if
+        PaperGateError: If ``state`` is invalid or if
             ``simulated_delta_jpy`` is not an int.
     """
-    _require_fixed_contract_count(state)
+    state = _require_state(state)
     _require_int("simulated_delta_jpy", simulated_delta_jpy)
     if state.session_halted:
         return _decision_halted(
@@ -398,11 +432,10 @@ def evaluate_daily_gate(
     ``day_realized_jpy`` and :data:`MAX_DAILY_DRAWDOWN_JPY`.
 
     Raises:
-        PaperGateError: If ``state.contract_count`` is not
-            :data:`FIXED_CONTRACT_COUNT`, or if
+        PaperGateError: If ``state`` is invalid or if
             ``simulated_delta_jpy`` is not an int.
     """
-    _require_fixed_contract_count(state)
+    state = _require_state(state)
     _require_int("simulated_delta_jpy", simulated_delta_jpy)
     if state.day_halted:
         return _decision_halted(
@@ -446,11 +479,10 @@ def evaluate_weekly_gate(
     :data:`MAX_WEEKLY_DRAWDOWN_JPY`.
 
     Raises:
-        PaperGateError: If ``state.contract_count`` is not
-            :data:`FIXED_CONTRACT_COUNT`, or if
+        PaperGateError: If ``state`` is invalid or if
             ``simulated_delta_jpy`` is not an int.
     """
-    _require_fixed_contract_count(state)
+    state = _require_state(state)
     _require_int("simulated_delta_jpy", simulated_delta_jpy)
     if state.week_halted:
         return _decision_halted(
@@ -510,11 +542,10 @@ def evaluate_all_gates(
     all three counters.
 
     Raises:
-        PaperGateError: If ``state.contract_count`` is not
-            :data:`FIXED_CONTRACT_COUNT`, or if
+        PaperGateError: If ``state`` is invalid or if
             ``simulated_delta_jpy`` is not an int.
     """
-    _require_fixed_contract_count(state)
+    state = _require_state(state)
     _require_int("simulated_delta_jpy", simulated_delta_jpy)
 
     if state.session_halted:
