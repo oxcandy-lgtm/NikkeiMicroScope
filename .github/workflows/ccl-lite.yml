@@ -91,6 +91,9 @@ jobs:
       - name: Compile NMS Python surfaces
         run: python3 -m compileall -q nms scripts tests
 
+      - name: Run paper gate unit tests
+        run: python3 -m unittest tests.test_paper_trading_gates tests.test_paper_gate_state_validation
+
       - name: Run shadow replay integrity unit tests
         run: python3 -m unittest tests.test_shadow_replay_integrity
 
